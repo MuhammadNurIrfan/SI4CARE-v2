@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { DEMO_CART_ITEMS } from "@/lib/mock-data";
 
 export type CartItem = {
   id: string;
@@ -26,28 +27,7 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<CartItem[]>([
-    {
-      id: "c1",
-      productId: "1",
-      name: "Tensi Darah Digital Omron HEM-7120",
-      variantId: "v1",
-      variantName: "Standar (Tanpa Adaptor)",
-      price: 540000,
-      quantity: 1,
-      imageColor: "bg-blue-100",
-    },
-    {
-      id: "c2",
-      productId: "4",
-      name: "Masker Medis 3-Ply (Box isi 50)",
-      variantId: "v4",
-      variantName: "Biru",
-      price: 25000,
-      quantity: 3,
-      imageColor: "bg-amber-100",
-    },
-  ]);
+  const [items, setItems] = useState<CartItem[]>(DEMO_CART_ITEMS);
 
   const totalItems = items.reduce((sum, i) => sum + i.quantity, 0);
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);

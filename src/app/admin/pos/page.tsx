@@ -17,17 +17,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-/* ─── Shared catalog ──────────────────────────────────── */
-const catalog = [
-  { id: "v1", name: "Tensi Darah Digital Omron HEM-7120", sku: "ALK-TEN-001", barcode: "8991234500017", price: 540000, hpp: 420000, stock: 15, category: "Alat Diagnostik" },
-  { id: "v2", name: "Termometer Tembak Infrared OneMed",  sku: "ALK-TER-001", barcode: "8991234500024", price: 150000, hpp: 105000, stock: 50, category: "Alat Diagnostik" },
-  { id: "v3", name: "Masker Medis 3-Ply (Box isi 50)",    sku: "BHP-MSK-001", barcode: "8991234500031", price: 25000,  hpp: 18000,  stock: 100, category: "Bahan Habis Pakai" },
-  { id: "v4", name: "Sarung Tangan Medis Latex (Box 100)",sku: "BHP-STG-001", barcode: "8991234500048", price: 45000,  hpp: 32000,  stock: 80,  category: "Bahan Habis Pakai" },
-  { id: "v5", name: "Stetoskop Littmann Classic III",     sku: "ALK-STE-001", barcode: "8991234500055", price: 1850000,hpp: 1450000, stock: 3,   category: "Alat Diagnostik" },
-  { id: "v6", name: "Kasa Steril 16x16 (Box isi 10)",    sku: "BHP-KAS-001", barcode: "8991234500062", price: 12000,  hpp: 8000,   stock: 200, category: "Bahan Habis Pakai" },
-  { id: "v7", name: "Oxymeter Fingertip Pulse",           sku: "ALK-OXY-001", barcode: "8991234500079", price: 75000,  hpp: 52000,  stock: 30,  category: "Alat Diagnostik" },
-  { id: "v8", name: "Tongkat Jalan Lipat Aluminium",      sku: "ALK-TGK-001", barcode: "8991234500086", price: 85000,  hpp: 60000,  stock: 20,  category: "Alat Bantu Jalan" },
-];
+import { POS_CATALOG } from "@/lib/mock-data";
+
+const catalog = POS_CATALOG;
 
 const mdrRates: Record<string, number> = {
   tunai: 0, transfer: 0, qris: 0.7, kartu_debit: 1.0, kartu_kredit: 2.5,

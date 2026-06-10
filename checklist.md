@@ -63,14 +63,16 @@ Voucher demo: `SEHAT10`, `ALKES5`.
 
 Temuan audit 2026-06-11. Prioritas karena menyangkut disk/memori & kebersihan repo:
 
-- [ ] **Hapus folder `build-verify` s/d `build-verify6` (±780 MB sampah artefak build)** — sudah di-.gitignore tapi masih makan disk: `rm -rf build-verify*`
-- [ ] **Hapus `tmp/`** (`si4care-dist`) dan jalankan `rm -rf .next` bila perlu ruang
-- [ ] **Bersihkan `tsconfig.json`** — hapus semua entri `build-verify*/types/**` dari `include` (12 baris; memperlambat typecheck & rusak setelah folder dihapus)
-- [ ] **Tulis ulang `README.md`** — masih template create-next-app; isi: deskripsi, status prototipe, cara run, struktur, link prd/checklist
-- [ ] **Ganti `"name": "si4care_temp"`** di package.json → `si4care`
+- [x] **Hapus folder `build-verify` s/d `build-verify6` (±780 MB sampah artefak build)** — selesai 2026-06-11
+- [x] **Hapus `tmp/`** — selesai 2026-06-11
+- [x] **Bersihkan `tsconfig.json`** — entri `build-verify*/types/**` dihapus dari `include`
+- [x] **Tulis ulang `README.md`** — deskripsi, status prototipe, cara run, struktur, link dokumen
+- [x] **Ganti `"name": "si4care_temp"`** di package.json → `si4care`
 - [ ] **Pindahkan `*.docx` ke `docs/`** (`SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`) — file biner besar sudah ter-commit; minimal keluarkan dari root. Tambah `*.docx` ke .gitignore bila tidak ingin versinya di git
-- [ ] **Tambah `.DS_Store` cleanup**: `find . -name .DS_Store -delete` (sudah di-gitignore, tapi satu ter-commit di `src/components/`? cek `git ls-files | grep DS_Store`)
-- [ ] **Sentralisasi data mock** — data produk yang sama (mis. "Omron HEM-7120") di-hardcode terpisah di **9 file** (CartContext, shop, shop/[id], checkout, checkout/success, pos, inbound, orders, featured-products). Buat `src/lib/mock-data.ts` satu sumber, semua file impor dari sana. **Ini prasyarat penting sebelum integrasi backend** — nanti tinggal ganti satu file dengan fetch API.
+- [x] **`.DS_Store` cleanup** — dihapus dari disk; tidak ada yang ter-commit di git
+- [x] **Sentralisasi data mock** — semua data produk/order/POS kini satu sumber di `src/lib/mock-data.ts`; 9 file konsumen (CartContext, shop, shop/[id], checkout, checkout/success, pos, inbound, orders, featured-products) tinggal impor. Saat backend siap: ganti isi mock-data.ts dengan fetch API, konsumen tidak berubah.
+
+Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan 12 error aturan baru `react-hooks` (setState-in-effect / impure-render) di navbar, carousel, use-mobile, CategoryContext, ContentContext, admin/content, login, dll. `npx tsc --noEmit` bersih. Perbaiki saat menyentuh file terkait.
 
 ---
 
@@ -135,3 +137,4 @@ Urutan yang disarankan (vertical slice per domain, bukan layer-by-layer):
 
 - **2026-06-10** — lihat `AUDIT-UI.md` (fitur POS marketplace custom fee, floating contact, chat, responsivitas mobile).
 - **2026-06-11** — Audit struktur & housekeeping (Claude Code): temuan di bagian 4; dibuat `checklist.md`, `AGENTS.md` diisi aturan proyek.
+- **2026-06-11 (lanjutan)** — Housekeeping dieksekusi: hapus build-verify*/tmp (±780 MB), tsconfig & README & nama package dibereskan, mock data disentralisasi ke `src/lib/mock-data.ts` (9 file konsumen jadi impor). tsc bersih; 12 error lint react-hooks pra-eksisting dicatat di §4.

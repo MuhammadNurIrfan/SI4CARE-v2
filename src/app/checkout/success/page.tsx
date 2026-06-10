@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
+import { ORDER_SUCCESS_ITEMS } from "@/lib/mock-data";
+
 const orderNumber = "INV/2026/" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
-const orderItems = [
-  { name: "Tensi Darah Digital Omron HEM-7120", variant: "Standar (Tanpa Adaptor)", qty: 1, price: 540000 },
-  { name: "Masker Medis 3-Ply (Box isi 50)", variant: "Biru", qty: 3, price: 25000 },
-];
+const orderItems = ORDER_SUCCESS_ITEMS;
 
 const formatRupiah = (n: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);

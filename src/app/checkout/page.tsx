@@ -11,18 +11,9 @@ import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CHECKOUT_ITEMS, PROMO_CODES } from "@/lib/mock-data";
 
-// Dummy data
-const checkoutItems = [
-  { id: "c1", name: "Tensi Darah Digital Omron HEM-7120", variantName: "Standar", price: 540000, quantity: 1, imageColor: "bg-blue-100" },
-  { id: "c2", name: "Masker Medis 3-Ply (Box isi 50)", variantName: "Biru", price: 25000, quantity: 3, imageColor: "bg-amber-100" },
-];
-
-/* Kode promo demo — prototipe */
-const PROMO_CODES: Record<string, { pct: number; label: string }> = {
-  SEHAT10: { pct: 10, label: "Diskon 10%" },
-  ALKES5: { pct: 5, label: "Diskon 5%" },
-};
+const checkoutItems = CHECKOUT_ITEMS;
 
 export default function CheckoutPage() {
   const [isSnapOpen, setIsSnapOpen] = useState(false);

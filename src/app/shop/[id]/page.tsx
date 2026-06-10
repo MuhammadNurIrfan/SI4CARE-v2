@@ -9,36 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { useCart } from "@/context/CartContext";
 import { PRODUCT_ART } from "@/app/(landing)/_components/illustrations";
+import { DEMO_PRODUCT_DETAIL } from "@/lib/mock-data";
 
-const productData = {
-  id: "1",
-  name: "Tensimeter Digital Omron HEM-7120",
-  description:
-    "OMRON HEM-7120 adalah tensimeter digital lengan atas dengan teknologi IntelliSense yang memberikan pembacaan cepat, nyaman, dan akurat. Dirancang khusus untuk pemantauan tekanan darah harian di rumah.",
-  brand: "Omron",
-  category: "Alat Diagnostik",
-  art: "tensimeter",
-  rating: 4.9,
-  reviews: 124,
-  sold: 324,
-  variants: [
-    { id: "v1", name: "Standar (Tanpa Adaptor)", price: 540000, originalPrice: 620000, stock: 15 },
-    { id: "v2", name: "Paket + Adaptor", price: 650000, originalPrice: 700000, stock: 8 },
-  ],
-  specs: [
-    { label: "Metode Pengukuran", value: "Oscillometric" },
-    { label: "Rentang Pengukuran", value: "Tekanan 0–299 mmHg · Nadi 40–180/menit" },
-    { label: "Akurasi", value: "Tekanan ±3 mmHg · Nadi ±5%" },
-    { label: "Baterai", value: "4× AA" },
-    { label: "Garansi", value: "5 Tahun Resmi Omron" },
-  ],
-  features: [
-    "Lampu indikator pemakaian manset",
-    "Indikator tingkat tekanan darah",
-    "Deteksi detak jantung tidak beraturan",
-    "Memori pengukuran terakhir",
-  ],
-};
+const productData = DEMO_PRODUCT_DETAIL;
 
 const tints = [
   "from-accent to-secondary/60",

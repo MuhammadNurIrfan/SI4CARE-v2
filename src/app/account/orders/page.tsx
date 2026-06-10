@@ -4,31 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Package, Truck, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
+import { DEMO_ORDERS } from "@/lib/mock-data";
 
-const dummyOrders = [
-  {
-    id: "INV/20231015/0001",
-    date: "15 Okt 2023",
-    status: "Dikirim",
-    statusColor: "bg-blue-500",
-    total: "Rp 614.500",
-    items: [
-      { name: "Tensi Darah Digital Omron HEM-7120", qty: 1, imageColor: "bg-blue-100" }
-    ],
-    resi: "JNE - 1234567890123"
-  },
-  {
-    id: "INV/20230902/0045",
-    date: "02 Sep 2023",
-    status: "Selesai",
-    statusColor: "bg-emerald-500",
-    total: "Rp 100.000",
-    items: [
-      { name: "Masker Medis 3-Ply (Box isi 50)", qty: 4, imageColor: "bg-amber-100" }
-    ],
-    resi: "Sicepat - 000987654321"
-  }
-];
+const dummyOrders = DEMO_ORDERS;
 
 export default function OrdersPage() {
   return (

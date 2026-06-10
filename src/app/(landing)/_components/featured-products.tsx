@@ -9,19 +9,10 @@ import {
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { fadeInUp, VIEWPORT } from "@/lib/animationVariants";
-import {
-  TensimeterArt, WheelchairArt, ThermometerArt, MaskArt, NebulizerArt, OximeterArt, StethoscopeArt,
-} from "./illustrations";
+import { PRODUCT_ART } from "./illustrations";
+import { FEATURED_PRODUCTS } from "@/lib/mock-data";
 
-const products = [
-  { name: "Tensimeter Digital Omron HEM-7120", price: "Rp 540.000", original: "Rp 620.000", category: "Alat Diagnostik", Art: TensimeterArt, badge: "Terlaris" },
-  { name: "Kursi Roda Standar Rumah Sakit", price: "Rp 1.250.000", category: "Alat Bantu Jalan", Art: WheelchairArt },
-  { name: "Termometer Tembak Infrared", price: "Rp 150.000", original: "Rp 195.000", category: "Alat Diagnostik", Art: ThermometerArt, badge: "Promo" },
-  { name: "Masker Medis 3-Ply (Box isi 50)", price: "Rp 25.000", category: "Bahan Habis Pakai", Art: MaskArt },
-  { name: "Nebulizer Kompresor NE-C28", price: "Rp 620.000", category: "Alat Terapi", Art: NebulizerArt, badge: "Original" },
-  { name: "Pulse Oximeter Fingertip", price: "Rp 175.000", category: "Alat Diagnostik", Art: OximeterArt },
-  { name: "Stetoskop Littmann Classic III", price: "Rp 1.850.000", category: "Alat Diagnostik", Art: StethoscopeArt },
-];
+const products = FEATURED_PRODUCTS.map((p) => ({ ...p, Art: PRODUCT_ART[p.art] }));
 
 export function FeaturedProducts() {
   const [api, setApi] = useState<CarouselApi>();

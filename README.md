@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# si4care
 
-## Getting Started
+Platform toko alat kesehatan: e-commerce pelanggan (katalog, keranjang, checkout, akun) + back-office admin (dashboard, POS, pesanan, marketplace, inventori, stock opname, diskon, CMS konten, laporan).
 
-First, run the development server:
+> **Status: prototipe frontend-only untuk presentasi klien.**
+> Semua data mock/localStorage — belum ada backend, database, auth, maupun pembayaran sungguhan.
+> Posisi pekerjaan terakhir & backlog: lihat [checklist.md](checklist.md).
+
+## Stack
+
+Next.js 16 (App Router, `src/`) · React 19 · TypeScript strict · Tailwind CSS v4 · shadcn/ui (base-ui) · framer-motion · recharts · lucide-react
+
+## Menjalankan
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Perintah lain: `npm run build` · `npm run lint` · `npx tsc --noEmit`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Struktur
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├─ app/
+│  ├─ (landing)/      # landing + halaman publik (about, faq, blog, dst)
+│  ├─ shop/ cart/ checkout/ account/   # alur belanja pelanggan
+│  ├─ login/ register/ forgot-password/
+│  └─ admin/          # back-office (14 menu)
+├─ components/        # ui/ (shadcn) · layout/ · shop/ · admin/
+├─ context/           # Cart, Content (CMS), Category — state prototipe
+└─ lib/               # utils, animationVariants, mock-data
+```
 
-## Learn More
+## Catatan demo
 
-To learn more about Next.js, take a look at the following resources:
+- Voucher checkout demo: `SEHAT10`, `ALKES5`
+- Konten CMS & foto kategori tersimpan di localStorage (`si4care_content_v1`, `si4care_categories`) — reset dengan hapus site data browser
+- Halaman admin: `/admin`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Dokumen
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [prd.md](prd.md) — product requirements
+- [checklist.md](checklist.md) — status pengerjaan & handoff antar sesi/AI
+- [AUDIT-UI.md](AUDIT-UI.md) — log audit UI per sesi
+- [AGENTS.md](AGENTS.md) — aturan untuk AI coding agent

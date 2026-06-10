@@ -14,13 +14,9 @@ import { PackagePlus, Plus, Trash2, Calculator, Boxes, AlertTriangle, Tag, Info,
 const formatRp = (n: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
 
-const productOptions = [
-  { id: "v1", name: "Tensi Darah Digital Omron HEM-7120", sku: "ALK-TEN-001", hargaJual: 540000, edFlag: false },
-  { id: "v2", name: "Termometer Tembak Infrared OneMed", sku: "ALK-TER-001", hargaJual: 150000, edFlag: false },
-  { id: "v3", name: "Masker Medis 3-Ply (Box isi 50)", sku: "BHP-MSK-001", hargaJual: 25000, edFlag: true },
-  { id: "v4", name: "Sarung Tangan Medis Latex (Box 100)", sku: "BHP-STG-001", hargaJual: 45000, edFlag: true },
-  { id: "v5", name: "Betadine Antiseptik 300ml", sku: "BTD-ANT-300", hargaJual: 42000, edFlag: true },
-];
+import { INBOUND_PRODUCT_OPTIONS, INBOUND_RECENT_BATCHES } from "@/lib/mock-data";
+
+const productOptions = INBOUND_PRODUCT_OPTIONS;
 
 interface DraftItem {
   key: string;
@@ -36,12 +32,7 @@ interface DraftItem {
   stockMode: "fifo" | "fefo";
 }
 
-const recentBatches = [
-  { batch: "B2026-051", produk: "Tensi Darah Digital Omron HEM-7120", qtyAwal: 20, sisa: 15, hpp: 420000, jual: 540000, ed: "-", supplier: "PT Omron Health", mode: "fifo" },
-  { batch: "B2026-048", produk: "Masker Medis 3-Ply (Box isi 50)", qtyAwal: 100, sisa: 64, hpp: 18000, jual: 25000, ed: "2026-12-31", supplier: "CV Sehat Medika", mode: "fefo" },
-  { batch: "B2026-045", produk: "Betadine Antiseptik 300ml", qtyAwal: 60, sisa: 12, hpp: 30000, jual: 42000, ed: "2026-08-15", supplier: "Mundipharma Dist.", mode: "fefo" },
-  { batch: "B2026-039", produk: "Sarung Tangan Medis Latex (Box 100)", qtyAwal: 80, sisa: 5, hpp: 32000, jual: 45000, ed: "2026-06-30", supplier: "CV Sehat Medika", mode: "fefo" },
-];
+const recentBatches = INBOUND_RECENT_BATCHES;
 
 export default function InboundPage() {
   // Inbound header
