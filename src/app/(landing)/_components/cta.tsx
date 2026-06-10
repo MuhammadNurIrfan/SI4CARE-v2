@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Photo } from "@/components/ui/photo";
 import { PHOTOS } from "./media";
 import { fadeInUp, VIEWPORT } from "@/lib/animationVariants";
+import { useContent } from "@/context/ContentContext";
 
 export function CTA() {
+  const { content } = useContent();
+  const cta = content.cta;
   return (
     <section className="py-20 md:py-28">
       <div className="container mx-auto px-4 md:px-6">
@@ -26,22 +29,22 @@ export function CTA() {
           <div className="bg-dots pointer-events-none absolute inset-0 opacity-[0.12]" />
 
           <div className="relative z-10 mx-auto max-w-2xl text-primary-foreground">
-            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-white/70">Mulai belanja sekarang</p>
+            <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-white/70">{cta.kicker}</p>
             <h2 className="font-heading text-3xl font-extrabold leading-tight md:text-5xl">
-              Kebutuhan alat kesehatan Anda, ada di sini.
+              {cta.judul}
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-white/85">
-              Dari tensimeter untuk keluarga hingga peralatan klinik — lebih dari 500 produk alkes original siap dikirim ke seluruh Indonesia.
+              {cta.subjudul}
             </p>
             <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
               <Link href="/shop">
                 <Button size="lg" variant="secondary" className="h-13 w-full gap-2 px-8 text-base font-semibold shadow-lg sm:w-auto">
-                  <ShoppingCart className="h-5 w-5" /> Belanja Sekarang
+                  <ShoppingCart className="h-5 w-5" /> {cta.tombolUtama}
                 </Button>
               </Link>
               <Link href="/contact">
                 <Button size="lg" variant="outline" className="h-13 w-full gap-2 border-white/40 bg-transparent px-8 text-base text-white hover:bg-white/10 hover:text-white sm:w-auto">
-                  <Phone className="h-4 w-4" /> Konsultasi Gratis
+                  <Phone className="h-4 w-4" /> {cta.tombolSekunder}
                 </Button>
               </Link>
             </div>

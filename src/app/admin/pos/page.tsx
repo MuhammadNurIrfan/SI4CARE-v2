@@ -3,8 +3,10 @@
 import { useState } from "react";
 import {
   Search, ScanLine, Plus, Minus, Trash2, Printer, CreditCard,
-  Banknote, QrCode, X, Store, ShoppingBag, Calculator, AlertTriangle, Info,
+  Banknote, QrCode, X, Store, ShoppingBag, ShoppingCart, Calculator, AlertTriangle, Info,
 } from "lucide-react";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useCategories } from "@/context/CategoryContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,14 +19,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 /* ─── Shared catalog ──────────────────────────────────── */
 const catalog = [
-  { id: "v1", name: "Tensi Darah Digital Omron HEM-7120", sku: "ALK-TEN-001", price: 540000, hpp: 420000, stock: 15, category: "Alat Diagnostik" },
-  { id: "v2", name: "Termometer Tembak Infrared OneMed",  sku: "ALK-TER-001", price: 150000, hpp: 105000, stock: 50, category: "Alat Diagnostik" },
-  { id: "v3", name: "Masker Medis 3-Ply (Box isi 50)",    sku: "BHP-MSK-001", price: 25000,  hpp: 18000,  stock: 100, category: "Bahan Habis Pakai" },
-  { id: "v4", name: "Sarung Tangan Medis Latex (Box 100)",sku: "BHP-STG-001", price: 45000,  hpp: 32000,  stock: 80,  category: "Bahan Habis Pakai" },
-  { id: "v5", name: "Stetoskop Littmann Classic III",     sku: "ALK-STE-001", price: 1850000,hpp: 1450000, stock: 3,   category: "Alat Diagnostik" },
-  { id: "v6", name: "Kasa Steril 16x16 (Box isi 10)",    sku: "BHP-KAS-001", price: 12000,  hpp: 8000,   stock: 200, category: "Bahan Habis Pakai" },
-  { id: "v7", name: "Oxymeter Fingertip Pulse",           sku: "ALK-OXY-001", price: 75000,  hpp: 52000,  stock: 30,  category: "Alat Diagnostik" },
-  { id: "v8", name: "Tongkat Jalan Lipat Aluminium",      sku: "ALK-TGK-001", price: 85000,  hpp: 60000,  stock: 20,  category: "Alat Bantu Jalan" },
+  { id: "v1", name: "Tensi Darah Digital Omron HEM-7120", sku: "ALK-TEN-001", barcode: "8991234500017", price: 540000, hpp: 420000, stock: 15, category: "Alat Diagnostik" },
+  { id: "v2", name: "Termometer Tembak Infrared OneMed",  sku: "ALK-TER-001", barcode: "8991234500024", price: 150000, hpp: 105000, stock: 50, category: "Alat Diagnostik" },
+  { id: "v3", name: "Masker Medis 3-Ply (Box isi 50)",    sku: "BHP-MSK-001", barcode: "8991234500031", price: 25000,  hpp: 18000,  stock: 100, category: "Bahan Habis Pakai" },
+  { id: "v4", name: "Sarung Tangan Medis Latex (Box 100)",sku: "BHP-STG-001", barcode: "8991234500048", price: 45000,  hpp: 32000,  stock: 80,  category: "Bahan Habis Pakai" },
+  { id: "v5", name: "Stetoskop Littmann Classic III",     sku: "ALK-STE-001", barcode: "8991234500055", price: 1850000,hpp: 1450000, stock: 3,   category: "Alat Diagnostik" },
+  { id: "v6", name: "Kasa Steril 16x16 (Box isi 10)",    sku: "BHP-KAS-001", barcode: "8991234500062", price: 12000,  hpp: 8000,   stock: 200, category: "Bahan Habis Pakai" },
+  { id: "v7", name: "Oxymeter Fingertip Pulse",           sku: "ALK-OXY-001", barcode: "8991234500079", price: 75000,  hpp: 52000,  stock: 30,  category: "Alat Diagnostik" },
+  { id: "v8", name: "Tongkat Jalan Lipat Aluminium",      sku: "ALK-TGK-001", barcode: "8991234500086", price: 85000,  hpp: 60000,  stock: 20,  category: "Alat Bantu Jalan" },
 ];
 
 const mdrRates: Record<string, number> = {
@@ -52,6 +54,7 @@ const lineDiscount = (i: CartItem) => {
    TAB 1 — KASIR (POS TOKO FISIK)
 ══════════════════════════════════════════════════════════════════ */
 function KasirTab() {
+  const { getCategoryImage } = useCategories();
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -63,7 +66,9 @@ function KasirTab() {
   const [cartDiscType, setCartDiscType] = useState<"pct" | "rp">("pct");
 
   const filtered = catalog.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
+    p.name.toLowerCase().includes(search.toLowerCase()) ||
+    p.sku.toLowerCase().includes(search.toLowerCase()) ||
+    p.barcode.includes(search)
   );
 
   const addToCart = (p: typeof catalog[0]) =>
@@ -102,42 +107,17 @@ function KasirTab() {
   const handleCheckout = () => {
     setReceiptMeta({ no: `POS-${String(Date.now()).slice(-6)}`, date: new Date().toLocaleDateString("id-ID") });
     setPaymentOpen(false);
+    setCartSheetOpen(false);
     setReceiptOpen(true);
   };
   const handleNew = () => { setCart([]); setCashInput(""); setCartDisc(0); setReceiptOpen(false); };
 
-  return (
-    <div className="flex flex-col lg:flex-row h-full overflow-hidden">
-      {/* LEFT: Catalog */}
-      <div className="flex-1 flex flex-col border-r overflow-hidden">
-        <div className="p-4 bg-background border-b flex gap-3 shrink-0">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-            <Input placeholder="Cari nama produk atau SKU..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-          <Button variant="outline" className="gap-2 shrink-0"><ScanLine className="h-4 w-4" /> Scan</Button>
-        </div>
-        <ScrollArea className="flex-1 p-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3">
-            {filtered.map(p => (
-              <button key={p.id} onClick={() => addToCart(p)}
-                className="text-left bg-card border rounded-xl p-3 hover:shadow-md hover:border-primary/50 transition-all active:scale-95 group">
-                <div className="w-full aspect-[4/3] bg-muted rounded-lg mb-2 flex items-center justify-center text-xs text-muted-foreground">Foto</div>
-                <p className="text-[10px] text-muted-foreground font-mono mb-0.5">{p.sku}</p>
-                <h3 className="font-medium text-xs line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">{p.name}</h3>
-                <div className="flex items-center justify-between">
-                  <p className="font-bold text-sm text-primary">{formatRp(p.price)}</p>
-                  <Badge variant="secondary" className="text-[9px]">{p.stock}</Badge>
-                </div>
-              </button>
-            ))}
-            {filtered.length === 0 && <div className="col-span-4 flex items-center justify-center h-48 text-muted-foreground">Produk tidak ditemukan</div>}
-          </div>
-        </ScrollArea>
-      </div>
+  const [cartSheetOpen, setCartSheetOpen] = useState(false);
+  const itemCount = cart.reduce((s, i) => s + i.qty, 0);
 
-      {/* RIGHT: Cart */}
-      <div className="w-full lg:w-[400px] flex flex-col bg-background shrink-0 max-h-[50vh] lg:max-h-full">
+  /* Panel keranjang — dipakai di sidebar desktop & bottom-sheet mobile */
+  const renderCartPanel = () => (
+    <>
         <div className="p-4 border-b flex items-center justify-between shrink-0">
           <h2 className="font-bold text-base">Keranjang Kasir</h2>
           {cart.length > 0 && <Button variant="ghost" size="sm" className="text-destructive text-xs" onClick={() => setCart([])}>Hapus Semua</Button>}
@@ -258,7 +238,70 @@ function KasirTab() {
           )}
           <Button size="default" className="w-full font-semibold" disabled={cart.length === 0} onClick={() => setPaymentOpen(true)}>Proses Pembayaran</Button>
         </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* LEFT: Catalog */}
+      <div className="flex-1 flex flex-col overflow-hidden lg:border-r">
+        <div className="p-3 lg:p-4 bg-background border-b flex gap-2 lg:gap-3 shrink-0">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+            <Input placeholder="Cari produk, SKU, atau scan barcode..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <Button variant="outline" className="gap-2 shrink-0"><ScanLine className="h-4 w-4" /><span className="hidden sm:inline">Scan</span></Button>
+        </div>
+        <ScrollArea className="flex-1 p-3 lg:p-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 lg:gap-3 pb-24 lg:pb-0">
+            {filtered.map(p => (
+              <button key={p.id} onClick={() => addToCart(p)}
+                className="text-left bg-card border rounded-xl p-3 hover:shadow-md hover:border-primary/50 transition-all active:scale-95 group">
+                <div className="w-full aspect-[5/3] lg:aspect-[4/3] bg-muted rounded-lg mb-2 overflow-hidden flex items-center justify-center text-xs text-muted-foreground">
+                  {getCategoryImage(p.category) ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={getCategoryImage(p.category)} alt={p.name} className="h-full w-full object-cover" />
+                  ) : (
+                    "Foto"
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground font-mono mb-0.5">{p.sku}</p>
+                <h3 className="font-medium text-xs line-clamp-2 mb-1.5 group-hover:text-primary transition-colors">{p.name}</h3>
+                <div className="flex items-center justify-between">
+                  <p className="font-bold text-sm text-primary">{formatRp(p.price)}</p>
+                  <Badge variant="secondary" className="text-[9px]">{p.stock}</Badge>
+                </div>
+              </button>
+            ))}
+            {filtered.length === 0 && <div className="col-span-full flex items-center justify-center h-48 text-muted-foreground">Produk tidak ditemukan</div>}
+          </div>
+        </ScrollArea>
       </div>
+
+      {/* RIGHT: Cart (desktop) */}
+      <div className="hidden lg:flex w-[400px] flex-col bg-background shrink-0">
+        {renderCartPanel()}
+      </div>
+
+      {/* Mobile: floating cart bar */}
+      <div className="lg:hidden fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <Button className="w-full h-12 justify-between font-semibold text-sm" onClick={() => setCartSheetOpen(true)}>
+          <span className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            Keranjang {itemCount > 0 && `(${itemCount} item)`}
+          </span>
+          <span>{cart.length > 0 ? formatRp(total) : "Kosong"}</span>
+        </Button>
+      </div>
+
+      {/* Mobile: cart bottom sheet */}
+      <Sheet open={cartSheetOpen} onOpenChange={setCartSheetOpen}>
+        <SheetContent side="bottom" showCloseButton={false} className="lg:hidden h-[88dvh] flex flex-col gap-0 p-0 rounded-t-2xl">
+          <SheetTitle className="sr-only">Keranjang Kasir</SheetTitle>
+          <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-muted-foreground/20" />
+          {renderCartPanel()}
+        </SheetContent>
+      </Sheet>
 
       {/* Payment Dialog */}
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
@@ -404,7 +447,7 @@ function MarketplaceTab() {
   const handleSave = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
   return (
-    <ScrollArea className="flex-1 p-5">
+    <ScrollArea className="flex-1 min-h-0 p-4 md:p-5">
       <div className="max-w-3xl mx-auto space-y-5">
         <div>
           <h2 className="text-lg font-bold">Input Transaksi Marketplace (Manual)</h2>
@@ -597,7 +640,7 @@ export default function POSPage() {
   const [tab, setTab] = useState<"kasir" | "marketplace">("kasir");
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] lg:h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[calc(100dvh-4rem)] overflow-hidden">
       {/* Tab header */}
       <div className="flex gap-1 p-2 bg-muted/30 border-b shrink-0">
         <button
@@ -615,7 +658,7 @@ export default function POSPage() {
       </div>
 
       {/* Tab content */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {tab === "kasir" ? <KasirTab /> : <MarketplaceTab />}
       </div>
     </div>

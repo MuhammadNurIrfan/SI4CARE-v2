@@ -18,11 +18,32 @@ const checkoutItems = [
   { id: "c2", name: "Masker Medis 3-Ply (Box isi 50)", variantName: "Biru", price: 25000, quantity: 3, imageColor: "bg-amber-100" },
 ];
 
+/* Kode promo demo — prototipe */
+const PROMO_CODES: Record<string, { pct: number; label: string }> = {
+  SEHAT10: { pct: 10, label: "Diskon 10%" },
+  ALKES5: { pct: 5, label: "Diskon 5%" },
+};
+
 export default function CheckoutPage() {
   const [isSnapOpen, setIsSnapOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("qris");
+  const [promoInput, setPromoInput] = useState("");
+  const [promo, setPromo] = useState<{ code: string; pct: number } | null>(null);
+  const [promoError, setPromoError] = useState("");
   const router = useRouter();
+
+  const applyPromo = () => {
+    const code = promoInput.trim().toUpperCase();
+    const found = PROMO_CODES[code];
+    if (found) {
+      setPromo({ code, pct: found.pct });
+      setPromoError("");
+    } else {
+      setPromo(null);
+      setPromoError("Kode promo tidak ditemukan atau sudah kedaluwarsa.");
+    }
+  };
 
   const formatRupiah = (number: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -33,10 +54,11 @@ export default function CheckoutPage() {
   };
 
   const subtotal = checkoutItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const discount = promo ? Math.round((subtotal * promo.pct) / 100) : 0;
   const shippingCost = 25000;
-  const ppn = subtotal * 0.12; // PPN 12% sesuai requirement
+  const ppn = (subtotal - discount) * 0.12; // PPN 12% dari DPP setelah diskon
   const serviceFee = 4500;
-  const total = subtotal + shippingCost + ppn + serviceFee;
+  const total = subtotal - discount + shippingCost + ppn + serviceFee;
 
   const handlePay = () => {
     setIsProcessing(true);
@@ -138,7 +160,7 @@ export default function CheckoutPage() {
         </div>
 
         {/* Sidebar Summary */}
-        <div className="space-y-6 sticky top-28">
+        <div className="space-y-6 lg:sticky lg:top-28">
           {/* Voucher */}
           <Card>
             <CardHeader className="flex flex-row items-center space-y-0 pb-4">
@@ -147,9 +169,21 @@ export default function CheckoutPage() {
             </CardHeader>
             <CardContent>
               <div className="flex gap-2">
-                <Input placeholder="Masukkan kode promo" />
-                <Button variant="secondary">Terapkan</Button>
+                <Input
+                  placeholder="Masukkan kode promo"
+                  value={promoInput}
+                  onChange={(e) => { setPromoInput(e.target.value); setPromoError(""); }}
+                  onKeyDown={(e) => { if (e.key === "Enter") applyPromo(); }}
+                />
+                <Button variant="secondary" onClick={applyPromo} disabled={!promoInput.trim()}>Terapkan</Button>
               </div>
+              {promo && (
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                  <span className="font-medium">✓ {promo.code} diterapkan (−{promo.pct}%)</span>
+                  <button className="text-xs underline underline-offset-2" onClick={() => { setPromo(null); setPromoInput(""); }}>Hapus</button>
+                </div>
+              )}
+              {promoError && <p className="mt-2 text-xs text-destructive">{promoError}</p>}
             </CardContent>
           </Card>
 
@@ -164,6 +198,12 @@ export default function CheckoutPage() {
                   <span>Total Harga ({checkoutItems.length} barang)</span>
                   <span className="text-foreground font-medium">{formatRupiah(subtotal)}</span>
                 </div>
+                {discount > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Diskon Voucher ({promo?.code})</span>
+                    <span className="font-medium text-emerald-600">-{formatRupiah(discount)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm text-muted-foreground">
                   <span>Total Ongkos Kirim</span>
                   <span className="text-foreground font-medium">{formatRupiah(shippingCost)}</span>

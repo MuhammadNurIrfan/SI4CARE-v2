@@ -40,13 +40,20 @@ import {
   Trash2,
   AlertTriangle,
   Package,
+  ScanBarcode,
+  RefreshCw,
+  Download,
 } from "lucide-react";
+import { useRef } from "react";
 import { MobileList, DesktopOnly, RecordCard, Field } from "@/components/admin/data-cards";
+import { Barcode128, QrSvg, generateBarcodeValue, downloadSvg } from "@/components/barcode";
+import { useCategories } from "@/context/CategoryContext";
 
 type Produk = {
   id: string;
   nama: string;
   sku: string;
+  barcode: string;
   kategori: string;
   stok: number;
   harga: number;
@@ -56,22 +63,21 @@ type Produk = {
 };
 
 const initialProduk: Produk[] = [
-  { id: "1", nama: "Tensimeter Digital OMRON HEM-7130", sku: "OMR-TEN-001", kategori: "Alat Ukur", stok: 24, harga: 450000, stokMin: 5, expDate: "-", status: "aktif" },
-  { id: "2", nama: "Nebulizer Omron NE-C28", sku: "OMR-NEB-001", kategori: "Terapi", stok: 3, harga: 620000, stokMin: 5, expDate: "-", status: "aktif" },
-  { id: "3", nama: "Masker Bedah 3-ply (50 pcs)", sku: "MSK-BDH-050", kategori: "APD", stok: 150, harga: 35000, stokMin: 20, expDate: "2025-12-31", status: "aktif" },
-  { id: "4", nama: "Pulse Oximeter Fingertip", sku: "OXI-FNG-001", kategori: "Alat Ukur", stok: 18, harga: 175000, stokMin: 10, expDate: "-", status: "aktif" },
-  { id: "5", nama: "Betadine Antiseptik 300ml", sku: "BTD-ANT-300", kategori: "Antiseptik", stok: 45, harga: 42000, stokMin: 15, expDate: "2026-08-15", status: "aktif" },
-  { id: "6", nama: "Kursi Roda Lipat Standar", sku: "KRS-LPT-001", kategori: "Mobilitas", stok: 7, harga: 1250000, stokMin: 3, expDate: "-", status: "aktif" },
-  { id: "7", nama: "Termometer Infrared Digital", sku: "TRM-INF-001", kategori: "Alat Ukur", stok: 0, harga: 185000, stokMin: 10, expDate: "-", status: "nonaktif" },
-  { id: "8", nama: "Handscoon Latex M (100 pcs)", sku: "HND-LTX-M", kategori: "APD", stok: 80, harga: 65000, stokMin: 20, expDate: "2025-06-30", status: "aktif" },
+  { id: "1", nama: "Tensimeter Digital OMRON HEM-7130", sku: "OMR-TEN-001", barcode: "8991234500017", kategori: "Alat Ukur", stok: 24, harga: 450000, stokMin: 5, expDate: "-", status: "aktif" },
+  { id: "2", nama: "Nebulizer Omron NE-C28", sku: "OMR-NEB-001", barcode: "8991234500024", kategori: "Terapi", stok: 3, harga: 620000, stokMin: 5, expDate: "-", status: "aktif" },
+  { id: "3", nama: "Masker Bedah 3-ply (50 pcs)", sku: "MSK-BDH-050", barcode: "8991234500031", kategori: "APD", stok: 150, harga: 35000, stokMin: 20, expDate: "2025-12-31", status: "aktif" },
+  { id: "4", nama: "Pulse Oximeter Fingertip", sku: "OXI-FNG-001", barcode: "8991234500048", kategori: "Alat Ukur", stok: 18, harga: 175000, stokMin: 10, expDate: "-", status: "aktif" },
+  { id: "5", nama: "Betadine Antiseptik 300ml", sku: "BTD-ANT-300", barcode: "8991234500055", kategori: "Antiseptik", stok: 45, harga: 42000, stokMin: 15, expDate: "2026-08-15", status: "aktif" },
+  { id: "6", nama: "Kursi Roda Lipat Standar", sku: "KRS-LPT-001", barcode: "8991234500062", kategori: "Mobilitas", stok: 7, harga: 1250000, stokMin: 3, expDate: "-", status: "aktif" },
+  { id: "7", nama: "Termometer Infrared Digital", sku: "TRM-INF-001", barcode: "", kategori: "Alat Ukur", stok: 0, harga: 185000, stokMin: 10, expDate: "-", status: "nonaktif" },
+  { id: "8", nama: "Handscoon Latex M (100 pcs)", sku: "HND-LTX-M", barcode: "8991234500086", kategori: "APD", stok: 80, harga: 65000, stokMin: 20, expDate: "2025-06-30", status: "aktif" },
 ];
-
-const kategoriList = ["Semua", "Alat Ukur", "Terapi", "APD", "Antiseptik", "Mobilitas"];
 
 const emptyForm: Omit<Produk, "id"> = {
   nama: "",
   sku: "",
-  kategori: "Alat Ukur",
+  barcode: "",
+  kategori: "Alat Diagnostik",
   stok: 0,
   harga: 0,
   stokMin: 5,
@@ -80,17 +86,23 @@ const emptyForm: Omit<Produk, "id"> = {
 };
 
 export default function ProductsPage() {
+  const { categories } = useCategories();
+  const kategoriList = ["Semua", ...categories.map((c) => c.nama)];
   const [produkList, setProdukList] = useState<Produk[]>(initialProduk);
   const [search, setSearch] = useState("");
   const [filterKategori, setFilterKategori] = useState("Semua");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<Produk, "id">>(emptyForm);
+  const [barcodeView, setBarcodeView] = useState<Produk | null>(null);
+  const barcodeWrapRef = useRef<HTMLDivElement | null>(null);
+  const qrWrapRef = useRef<HTMLDivElement | null>(null);
 
   const filtered = produkList.filter((p) => {
     const matchSearch =
       p.nama.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase());
+      p.sku.toLowerCase().includes(search.toLowerCase()) ||
+      p.barcode.includes(search);
     const matchKat = filterKategori === "Semua" || p.kategori === filterKategori;
     return matchSearch && matchKat;
   });
@@ -103,7 +115,7 @@ export default function ProductsPage() {
 
   function openEdit(p: Produk) {
     setEditId(p.id);
-    setForm({ nama: p.nama, sku: p.sku, kategori: p.kategori, stok: p.stok, harga: p.harga, stokMin: p.stokMin, expDate: p.expDate, status: p.status });
+    setForm({ nama: p.nama, sku: p.sku, barcode: p.barcode, kategori: p.kategori, stok: p.stok, harga: p.harga, stokMin: p.stokMin, expDate: p.expDate, status: p.status });
     setDialogOpen(true);
   }
 
@@ -219,6 +231,7 @@ export default function ProductsPage() {
               <TableRow>
                 <TableHead>Nama Produk</TableHead>
                 <TableHead>SKU</TableHead>
+                <TableHead>Barcode</TableHead>
                 <TableHead>Kategori</TableHead>
                 <TableHead className="text-right">Harga</TableHead>
                 <TableHead className="text-center">Stok</TableHead>
@@ -230,7 +243,7 @@ export default function ProductsPage() {
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={9} className="text-center py-10 text-muted-foreground">
                     Tidak ada produk ditemukan
                   </TableCell>
                 </TableRow>
@@ -241,6 +254,20 @@ export default function ProductsPage() {
                   <TableRow key={p.id}>
                     <TableCell className="font-medium max-w-[200px] truncate">{p.nama}</TableCell>
                     <TableCell className="text-muted-foreground font-mono text-xs">{p.sku}</TableCell>
+                    <TableCell>
+                      {p.barcode ? (
+                        <button
+                          onClick={() => setBarcodeView(p)}
+                          className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground hover:text-primary transition-colors"
+                          title="Lihat barcode & QR"
+                        >
+                          <ScanBarcode className="h-3.5 w-3.5" />
+                          {p.barcode}
+                        </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/50">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>{p.kategori}</TableCell>
                     <TableCell className="text-right">
                       Rp {p.harga.toLocaleString("id-ID")}
@@ -314,6 +341,11 @@ export default function ProductsPage() {
                     </div>
                     <Badge variant={p.status === "aktif" ? "default" : "secondary"} className="shrink-0">{p.status === "aktif" ? "Aktif" : "Nonaktif"}</Badge>
                   </div>
+                  <Field label="Barcode" value={p.barcode ? (
+                    <button onClick={() => setBarcodeView(p)} className="inline-flex items-center gap-1 font-mono text-primary underline-offset-2 underline">
+                      {p.barcode}
+                    </button>
+                  ) : "—"} />
                   <Field label="Kategori" value={p.kategori} />
                   <Field label="Harga" value={`Rp ${p.harga.toLocaleString("id-ID")}`} />
                   <Field
@@ -372,6 +404,41 @@ export default function ProductsPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="barcode">Barcode</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="barcode"
+                  value={form.barcode}
+                  onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+                  placeholder="Scan / ketik barcode yang sudah ada"
+                  className="font-mono"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="shrink-0 gap-1.5"
+                  onClick={() => setForm((f) => ({ ...f, barcode: generateBarcodeValue() }))}
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> Generate
+                </Button>
+              </div>
+              {form.barcode && (
+                <div className="mt-1 flex flex-wrap items-center gap-4 rounded-lg border bg-muted/30 p-3">
+                  <div className="min-w-0 flex-1 overflow-hidden">
+                    <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">Barcode Garis (Code128)</p>
+                    <Barcode128 value={form.barcode} height={40} />
+                  </div>
+                  <div className="shrink-0">
+                    <p className="mb-1 text-[10px] font-medium uppercase text-muted-foreground">QR Code</p>
+                    <QrSvg value={form.barcode} size={72} />
+                  </div>
+                </div>
+              )}
+              <p className="text-[11px] text-muted-foreground">
+                Isi barcode produk yang sudah ada, atau klik Generate untuk membuat kode baru (format EAN-13).
+              </p>
             </div>
             <div className="grid grid-cols-3 gap-4">
               <div className="grid gap-1.5">
@@ -432,6 +499,53 @@ export default function ProductsPage() {
               {editId ? "Simpan Perubahan" : "Tambah Produk"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Barcode Preview Dialog */}
+      <Dialog open={!!barcodeView} onOpenChange={(o) => !o && setBarcodeView(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanBarcode className="h-5 w-5" /> Barcode Produk
+            </DialogTitle>
+          </DialogHeader>
+          {barcodeView && (
+            <div className="space-y-4">
+              <div>
+                <p className="font-medium text-sm">{barcodeView.nama}</p>
+                <p className="font-mono text-xs text-muted-foreground">{barcodeView.sku} · {barcodeView.barcode}</p>
+              </div>
+              <div className="rounded-lg border bg-white p-4">
+                <p className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">Barcode Garis (Code128)</p>
+                <div ref={barcodeWrapRef} className="flex justify-center overflow-hidden">
+                  <Barcode128 value={barcodeView.barcode} height={56} />
+                </div>
+              </div>
+              <div className="rounded-lg border bg-white p-4">
+                <p className="mb-2 text-[10px] font-medium uppercase text-muted-foreground">QR Code</p>
+                <div ref={qrWrapRef} className="flex justify-center">
+                  <QrSvg value={barcodeView.barcode} size={140} />
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={() => downloadSvg(barcodeWrapRef.current?.querySelector("svg") ?? null, `barcode-${barcodeView.sku}.svg`)}
+                >
+                  <Download className="h-3.5 w-3.5" /> Unduh Barcode
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1 gap-1.5"
+                  onClick={() => downloadSvg(qrWrapRef.current?.querySelector("svg") ?? null, `qr-${barcodeView.sku}.svg`)}
+                >
+                  <Download className="h-3.5 w-3.5" /> Unduh QR
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

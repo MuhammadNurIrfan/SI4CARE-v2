@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ShoppingCart, Heart, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
+import { useCategories } from "@/context/CategoryContext";
 import { PRODUCT_ART, HeartPulseArt } from "@/app/(landing)/_components/illustrations";
 
 export interface Product {
@@ -25,9 +26,11 @@ const formatRupiah = (n: number) =>
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { getCategoryImage } = useCategories();
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
 
+  const categoryImage = getCategoryImage(product.category);
   const Art = (product.art && PRODUCT_ART[product.art]) || HeartPulseArt;
   const out = product.stock === 0;
   const low = !out && product.stock <= 5;
@@ -55,10 +58,21 @@ export function ProductCard({ product }: { product: Product }) {
     <div className="group flex h-full flex-col overflow-hidden rounded-3xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
       <Link href={`/shop/${product.id}`} className="relative block">
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-accent to-secondary/60">
-          <div className="bg-dots absolute inset-0 opacity-40" />
-          <div className="grid h-full place-items-center">
-            <Art className="h-28 w-28 transition-transform duration-500 group-hover:scale-110" />
-          </div>
+          {categoryImage ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={categoryImage}
+              alt={product.name}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <>
+              <div className="bg-dots absolute inset-0 opacity-40" />
+              <div className="grid h-full place-items-center">
+                <Art className="h-28 w-28 transition-transform duration-500 group-hover:scale-110" />
+              </div>
+            </>
+          )}
 
           {/* badges */}
           <div className="absolute left-3 top-3 flex flex-col gap-1.5">

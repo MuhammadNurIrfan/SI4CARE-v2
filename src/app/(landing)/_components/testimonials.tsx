@@ -9,14 +9,13 @@ import {
 import { Star, Quote, ChevronLeft, ChevronRight, BadgeCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const testimonials = [
-  { name: "Ibu Dewi Kusuma", role: "Ibu Rumah Tangga · Surabaya", initials: "DK", content: "Tensimeter OMRON yang saya beli kondisinya mulus, segel masih utuh, dan lengkap dengan garansi resmi. Pengiriman cepat — 2 hari sudah sampai. Puas banget!" },
-  { name: "dr. Aditya Prasetyo", role: "Dokter Umum · Klinik Pratama Sehat", initials: "AP", content: "Saya rutin beli masker dan sarung tangan medis untuk klinik. Kualitas terjaga, harga kompetitif, dan ada faktur untuk pembukuan. Pelayanan responsif." },
-  { name: "Bpk. Hendra Wijaya", role: "Caregiver · Jakarta Selatan", initials: "HW", content: "Kursi roda untuk ayah saya tiba dalam kondisi sempurna, terbungkus rapi. CS membantu saya memilih ukuran yang tepat sebelum beli. Sangat merekomendasikan!" },
-  { name: "Siti Rahayu, S.Farm.", role: "Apoteker · Apotek Keluarga Sehat", initials: "SR", content: "Sudah langganan untuk kebutuhan alkes apotek. Produk selalu tersedia, pengiriman tepat waktu, dan ada opsi faktur pajak yang memudahkan pembukuan kami." },
-  { name: "Ibu Nana Marliana", role: "Pasien Hipertensi · Bandung", initials: "NM", content: "Sudah beli tensimeter 2 kali dan keduanya original. Harganya lebih murah dibanding toko offline. Proses belanja mudah dan ada panduan cara pakainya." },
-  { name: "Bpk. Rudi Santoso", role: "Pemilik Home Care · Medan", initials: "RS", content: "Belanja alkes dalam jumlah banyak untuk layanan home care. Tim B2B membantu menegosiasikan harga terbaik dan pengiriman terjadwal. Sangat profesional." },
-];
+import { useContent } from "@/context/ContentContext";
+
+/** Inisial otomatis dari nama, mis. "Ibu Dewi Kusuma" → "DK" */
+function getInitials(name: string) {
+  const words = name.replace(/[.,]/g, "").split(/\s+/).filter((w) => !["ibu", "bpk", "dr", "bapak"].includes(w.toLowerCase()));
+  return words.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "??";
+}
 
 const avatarTints = [
   "bg-primary/12 text-primary",
@@ -25,6 +24,8 @@ const avatarTints = [
 ];
 
 export function Testimonials() {
+  const { content } = useContent();
+  const testimonials = content.testimonials;
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(0);
   const [count, setCount] = useState(0);
@@ -80,7 +81,7 @@ export function Testimonials() {
                     </div>
                     <figcaption className="mt-5 flex items-center gap-3 border-t pt-5">
                       <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-full text-sm font-bold ${avatarTints[i % avatarTints.length]}`}>
-                        {t.initials}
+                        {getInitials(t.name)}
                       </div>
                       <div>
                         <p className="flex items-center gap-1 text-sm font-semibold">

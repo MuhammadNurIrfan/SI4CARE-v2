@@ -15,6 +15,7 @@ import {
   MaskArt,
 } from "./illustrations";
 import { staggerContainer, fadeInUp, blurReveal, scaleIn } from "@/lib/animationVariants";
+import { useContent } from "@/context/ContentContext";
 
 const categories = [
   { label: "Tensimeter", Art: TensimeterArt },
@@ -32,6 +33,8 @@ const trust = [
 ];
 
 export function Hero() {
+  const { content } = useContent();
+  const hero = content.hero;
   return (
     <section className="relative overflow-hidden pt-28 pb-16 md:pt-36 md:pb-24">
       {/* Ambient background */}
@@ -44,32 +47,32 @@ export function Hero() {
         <motion.div variants={staggerContainer} initial="hidden" animate="show">
           <motion.div variants={fadeInUp} className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
             <BadgeCheck className="h-4 w-4" />
-            Terdaftar BPOM · Izin Alkes Resmi Kemenkes
+            {hero.badge}
           </motion.div>
 
           <motion.h1 variants={blurReveal} className="font-heading text-[2.6rem] font-extrabold leading-[1.04] tracking-tight sm:text-5xl md:text-6xl lg:text-[4rem]">
-            Alat kesehatan
-            <br />
-            terpercaya untuk
-            <br />
-            <span className="text-gradient-brand">keluarga &amp; klinik.</span>
+            {hero.title.split("\n").map((line, i) => (
+              <span key={i}>
+                {line}
+                <br />
+              </span>
+            ))}
+            <span className="text-gradient-brand">{hero.titleHighlight}</span>
           </motion.h1>
 
           <motion.p variants={fadeInUp} className="mt-6 max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Tensimeter, nebulizer, kursi roda, oximeter, dan ribuan produk alkes lainnya —
-            <strong className="text-foreground"> 100% original</strong>, harga transparan,
-            dikirim langsung ke pintu Anda.
+            {hero.subtitle}
           </motion.p>
 
           <motion.div variants={fadeInUp} className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link href="/shop">
               <Button size="lg" className="h-13 w-full px-8 text-base shadow-lg sm:w-auto" style={{ boxShadow: "0 10px 30px -8px oklch(0.50 0.16 228 / 0.45)" }}>
-                Lihat Produk Lengkap <ArrowRight className="ml-2 h-4 w-4" />
+                {hero.ctaPrimary} <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
             <Link href="/how-to-buy">
               <Button size="lg" variant="outline" className="h-13 w-full px-8 text-base sm:w-auto">
-                Cara Pembelian
+                {hero.ctaSecondary}
               </Button>
             </Link>
           </motion.div>

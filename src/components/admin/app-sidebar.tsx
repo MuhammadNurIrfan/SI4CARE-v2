@@ -3,6 +3,7 @@
 import {
   ShoppingCart, LayoutDashboard, Package, RefreshCcw, Store, Settings,
   LogOut, Bell, BarChart2, PackagePlus, Ticket, FileText, HelpCircle, ChevronRight,
+  FolderOpen, ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -36,7 +37,9 @@ const navGroups: { label: string; items: NavItem[] }[] = [
     label: "Inventaris",
     items: [
       { title: "Produk & Harga", url: "/admin/products", icon: Package },
+      { title: "Kategori", url: "/admin/categories", icon: FolderOpen },
       { title: "Transaksi Masuk", url: "/admin/inbound", icon: PackagePlus },
+      { title: "Stock Opname", url: "/admin/stock-opname", icon: ClipboardCheck },
     ],
   },
   {
