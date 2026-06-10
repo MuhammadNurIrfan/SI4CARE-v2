@@ -42,6 +42,5 @@ src/
 ## Dokumen
 
 - [prd.md](prd.md) — product requirements
-- [checklist.md](checklist.md) — status pengerjaan & handoff antar sesi/AI
-- [AUDIT-UI.md](AUDIT-UI.md) — log audit UI per sesi
+- [checklist.md](checklist.md) — status pengerjaan, log sesi, & handoff antar sesi/AI
 - [AGENTS.md](AGENTS.md) — aturan untuk AI coding agent

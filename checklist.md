@@ -14,7 +14,7 @@
 | Stack aktual | **Next.js 16 (App Router, src/) + React 19 + TypeScript strict + Tailwind v4 + shadcn/ui (base-ui) + framer-motion + recharts** |
 | Status | **Prototipe FRONTEND ONLY untuk presentasi klien.** Semua data mock/hardcode/localStorage. Backend, DB, auth, pembayaran = DITUNDA, belum dikerjakan. |
 | Bahasa UI | Indonesia |
-| Dokumen sumber | `prd.md` (requirement), `AUDIT-UI.md` (log audit UI per sesi), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx` |
+| Dokumen sumber | `prd.md` (requirement), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx` |
 | Perintah | `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` |
 
 **Keputusan desain yang TIDAK boleh diubah tanpa persetujuan owner:**
@@ -45,12 +45,15 @@ src/
 Kunci localStorage prototipe: `si4care_categories`, `si4care_content_v1`.
 Voucher demo: `SEHAT10`, `ALKES5`.
 
+Catatan teknis: QR pakai `uqr` (zero-dependency); barcode Code128 di-encode manual
+tanpa dependensi di `src/components/barcode.tsx`; format generate = EAN-13.
+
 ---
 
 ## 3. SELESAI (jangan dikerjakan ulang)
 
 - [x] Seluruh halaman landing, shop, cart, checkout(+success), akun, auth (UI saja)
-- [x] Seluruh halaman admin (14 menu) — lihat tabel di `AUDIT-UI.md`
+- [x] Seluruh halaman admin (14 menu): dashboard, POS, pesanan, marketplace, pesan, produk, kategori, inbound, stock opname, diskon, konten (CMS), laporan, alarm, pengaturan
 - [x] Sistem barcode: input/scan/generate EAN-13, render Code128 + QR (`uqr`), unduh SVG
 - [x] POS mobile (bottom sheet keranjang), stock opname, CMS per-section, foto kategori
 - [x] Kolom biaya/potongan custom POS marketplace, floating contact (WA + chat), room chat pelanggan & admin
@@ -126,7 +129,7 @@ Urutan yang disarankan (vertical slice per domain, bukan layer-by-layer):
 
 ## 8. Aturan Untuk AI yang Melanjutkan
 
-1. Baca `AGENTS.md` (aturan agent), `prd.md` (requirement), file ini, lalu `AUDIT-UI.md` (riwayat).
+1. Baca `AGENTS.md` (aturan agent), `prd.md` (requirement), lalu file ini (status + riwayat di Log Sesi).
 2. Next.js versi ini ≠ training data — baca `node_modules/next/dist/docs/` sebelum menulis kode Next.
 3. Jangan tambah dependensi tanpa alasan kuat; proyek ini sengaja ramping.
 4. Ikuti token desain & komponen yang ada. Jangan ubah palet/font/radius.
@@ -135,6 +138,7 @@ Urutan yang disarankan (vertical slice per domain, bukan layer-by-layer):
 
 ## Log Sesi
 
-- **2026-06-10** — lihat `AUDIT-UI.md` (fitur POS marketplace custom fee, floating contact, chat, responsivitas mobile).
+- **2026-06-08 (dan sebelumnya)** — barcode per item (input/scan/generate + unduh SVG), POS mobile bottom-sheet, CMS per-section, foto kategori, stock opname, keranjang dipadatkan, voucher checkout.
+- **2026-06-10** — kolom biaya/potongan custom POS marketplace, floating contact (WA + chat), room chat pelanggan & menu Pesan admin, halaman kontak disederhanakan, grid produk mobile 2 kolom, audit responsivitas (discounts/inbound/content/orders/detail produk).
 - **2026-06-11** — Audit struktur & housekeeping (Claude Code): temuan di bagian 4; dibuat `checklist.md`, `AGENTS.md` diisi aturan proyek.
 - **2026-06-11 (lanjutan)** — Housekeeping dieksekusi: hapus build-verify*/tmp (±780 MB), tsconfig & README & nama package dibereskan, mock data disentralisasi ke `src/lib/mock-data.ts` (9 file konsumen jadi impor). tsc bersih; 12 error lint react-hooks pra-eksisting dicatat di §4.
