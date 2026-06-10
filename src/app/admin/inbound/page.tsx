@@ -231,39 +231,63 @@ export default function InboundPage() {
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-base">Daftar Item Masuk ({draft.length})</CardTitle></CardHeader>
               <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produk / Batch</TableHead>
-                      <TableHead className="text-center">Qty</TableHead>
-                      <TableHead className="text-right">HPP</TableHead>
-                      <TableHead className="text-right">Jual</TableHead>
-                      <TableHead className="text-right">Margin</TableHead>
-                      <TableHead></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {draft.map((i) => (
-                      <TableRow key={i.key}>
-                        <TableCell>
-                          <p className="font-medium text-sm">{i.name}</p>
-                          <p className="font-mono text-[11px] text-muted-foreground">{i.batchNumber}{i.expDate ? ` · ED ${i.expDate}` : ""} · {i.stockMode.toUpperCase()}</p>
-                        </TableCell>
-                        <TableCell className="text-center">{i.qty}</TableCell>
-                        <TableCell className="text-right text-sm">{formatRp(i.hpp)}</TableCell>
-                        <TableCell className="text-right text-sm">{formatRp(i.hargaJual)}</TableCell>
-                        <TableCell className={`text-right text-sm font-medium ${marginOf(i) <= 0 ? "text-destructive" : marginOf(i) < 10 ? "text-amber-600" : "text-emerald-600"}`}>
-                          {marginOf(i).toFixed(0)}%
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDraft((p) => p.filter((x) => x.key !== i.key))}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </TableCell>
+                <div className="hidden md:block overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Produk / Batch</TableHead>
+                        <TableHead className="text-center">Qty</TableHead>
+                        <TableHead className="text-right">HPP</TableHead>
+                        <TableHead className="text-right">Jual</TableHead>
+                        <TableHead className="text-right">Margin</TableHead>
+                        <TableHead></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {draft.map((i) => (
+                        <TableRow key={i.key}>
+                          <TableCell>
+                            <p className="font-medium text-sm">{i.name}</p>
+                            <p className="font-mono text-[11px] text-muted-foreground">{i.batchNumber}{i.expDate ? ` · ED ${i.expDate}` : ""} · {i.stockMode.toUpperCase()}</p>
+                          </TableCell>
+                          <TableCell className="text-center">{i.qty}</TableCell>
+                          <TableCell className="text-right text-sm">{formatRp(i.hpp)}</TableCell>
+                          <TableCell className="text-right text-sm">{formatRp(i.hargaJual)}</TableCell>
+                          <TableCell className={`text-right text-sm font-medium ${marginOf(i) <= 0 ? "text-destructive" : marginOf(i) < 10 ? "text-amber-600" : "text-emerald-600"}`}>
+                            {marginOf(i).toFixed(0)}%
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => setDraft((p) => p.filter((x) => x.key !== i.key))}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {/* Mobile cards */}
+                <div className="md:hidden divide-y">
+                  {draft.map((i) => (
+                    <div key={i.key} className="p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm leading-tight">{i.name}</p>
+                          <p className="font-mono text-[10px] text-muted-foreground">{i.batchNumber}{i.expDate ? ` · ED ${i.expDate}` : ""} · {i.stockMode.toUpperCase()}</p>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setDraft((p) => p.filter((x) => x.key !== i.key))}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                        <div><span className="text-muted-foreground">Qty: </span><span className="font-medium">{i.qty}</span></div>
+                        <div><span className="text-muted-foreground">Margin: </span><span className={`font-medium ${marginOf(i) <= 0 ? "text-destructive" : marginOf(i) < 10 ? "text-amber-600" : "text-emerald-600"}`}>{marginOf(i).toFixed(0)}%</span></div>
+                        <div><span className="text-muted-foreground">HPP: </span><span className="font-medium">{formatRp(i.hpp)}</span></div>
+                        <div><span className="text-muted-foreground">Jual: </span><span className="font-medium">{formatRp(i.hargaJual)}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -298,7 +322,7 @@ export default function InboundPage() {
           <CardDescription>Telusuri sisa stok per batch beserta HPP dan tanggal kadaluarsa.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -334,6 +358,29 @@ export default function InboundPage() {
                 })}
               </TableBody>
             </Table>
+          </div>
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y">
+            {recentBatches.map((b) => {
+              const low = b.sisa / b.qtyAwal < 0.2;
+              return (
+                <div key={b.batch} className="p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium leading-tight">{b.produk}</p>
+                      <p className="font-mono text-[10px] text-muted-foreground">{b.batch} · ED {b.ed}</p>
+                    </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{b.mode.toUpperCase()}</Badge>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                    <div><span className="text-muted-foreground">Sisa: </span><span className={`font-medium ${low ? "text-amber-600" : ""}`}>{b.sisa}/{b.qtyAwal}{low && " ⚠"}</span></div>
+                    <div><span className="text-muted-foreground">Pemasok: </span><span className="font-medium truncate">{b.supplier}</span></div>
+                    <div><span className="text-muted-foreground">HPP: </span><span className="font-medium">{formatRp(b.hpp)}</span></div>
+                    <div><span className="text-muted-foreground">Jual: </span><span className="font-medium">{formatRp(b.jual)}</span></div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </CardContent>
       </Card>

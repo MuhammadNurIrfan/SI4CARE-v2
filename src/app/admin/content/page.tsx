@@ -61,10 +61,12 @@ export default function ContentPage() {
       </div>
 
       <Tabs defaultValue="landing" className="gap-5">
-        <TabsList className="h-9">
-          <TabsTrigger value="landing" className="px-4"><LayoutTemplate className="mr-1.5 h-4 w-4" /> Landing Page</TabsTrigger>
-          <TabsTrigger value="articles" className="px-4"><FileText className="mr-1.5 h-4 w-4" /> Artikel / Blog</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 md:mx-0 overflow-x-auto px-4 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="h-9 w-max">
+            <TabsTrigger value="landing" className="px-4 whitespace-nowrap"><LayoutTemplate className="mr-1.5 h-4 w-4" /> Landing Page</TabsTrigger>
+            <TabsTrigger value="articles" className="px-4 whitespace-nowrap"><FileText className="mr-1.5 h-4 w-4" /> Artikel / Blog</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="landing"><LandingEditor /></TabsContent>
         <TabsContent value="articles"><ArticlesManager /></TabsContent>

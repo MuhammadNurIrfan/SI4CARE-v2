@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { FloatingContact } from "@/components/layout/floating-contact";
 
 export default function LandingLayout({ children }: { children: ReactNode }) {
   return (
@@ -8,6 +9,7 @@ export default function LandingLayout({ children }: { children: ReactNode }) {
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />
+      <FloatingContact />
     </div>
   );
 }

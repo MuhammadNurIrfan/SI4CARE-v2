@@ -175,7 +175,7 @@ export default function ShopPage() {
 
             {/* Grid */}
             {filtered.length > 0 ? (
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {paginated.map((p) => <ProductCard key={p.id} product={p} />)}
               </div>
             ) : (

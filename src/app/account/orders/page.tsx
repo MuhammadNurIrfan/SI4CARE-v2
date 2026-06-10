@@ -39,12 +39,14 @@ export default function OrdersPage() {
       </div>
 
       <Tabs defaultValue="semua" className="w-full">
-        <TabsList className="mb-6 w-full justify-start overflow-x-auto">
-          <TabsTrigger value="semua">Semua</TabsTrigger>
-          <TabsTrigger value="berlangsung">Sedang Berlangsung</TabsTrigger>
-          <TabsTrigger value="selesai">Selesai</TabsTrigger>
-          <TabsTrigger value="dibatalkan">Dibatalkan</TabsTrigger>
-        </TabsList>
+        <div className="mb-6 -mx-4 md:mx-0 overflow-x-auto px-4 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="w-max">
+            <TabsTrigger value="semua" className="whitespace-nowrap">Semua</TabsTrigger>
+            <TabsTrigger value="berlangsung" className="whitespace-nowrap">Sedang Berlangsung</TabsTrigger>
+            <TabsTrigger value="selesai" className="whitespace-nowrap">Selesai</TabsTrigger>
+            <TabsTrigger value="dibatalkan" className="whitespace-nowrap">Dibatalkan</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="semua" className="space-y-4">
           {dummyOrders.map((order) => (

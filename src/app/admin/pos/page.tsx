@@ -416,6 +416,14 @@ function MarketplaceTab() {
   const [voucherPlatform, setVoucherPlatform] = useState(0); // diskon ditanggung platform
   const [saved, setSaved] = useState(false);
 
+  // Custom fees (admin dapat menambah dengan nama bebas)
+  type FeeKind = "pct" | "rp";
+  interface CustomFee { id: string; name: string; kind: FeeKind; value: number; sign: "minus" | "plus"; }
+  const [customFees, setCustomFees] = useState<CustomFee[]>([]);
+  const addCustomFee = () => setCustomFees(prev => [...prev, { id: String(Date.now()), name: "", kind: "rp", value: 0, sign: "minus" }]);
+  const updateCustomFee = (id: string, patch: Partial<CustomFee>) => setCustomFees(prev => prev.map(f => f.id === id ? { ...f, ...patch } : f));
+  const removeCustomFee = (id: string) => setCustomFees(prev => prev.filter(f => f.id !== id));
+
   const addItem = () => {
     const prod = catalog.find(p => p.id === selectedProduct);
     if (!prod) return;
@@ -435,9 +443,16 @@ function MarketplaceTab() {
   //   - komisi platform - MDR - biaya layanan - ongkir kurir
   const komisiNominal       = nilaiBarang * (komisiPlatform / 100);
   const mdrNominal          = nilaiBarang * (mdrPersen / 100);
+  // Hitung nominal setiap custom fee
+  const customFeeRows = customFees.map(f => {
+    const nominal = f.kind === "pct" ? (nilaiBarang * (f.value / 100)) : f.value;
+    const signed = f.sign === "plus" ? nominal : -nominal;
+    return { ...f, nominal, signed };
+  });
+  const customFeesTotal = customFeeRows.reduce((s, f) => s + f.signed, 0); // + tambah pendapatan, - potongan
   const totalPotonganPlatform = komisiNominal + mdrNominal + biayaLayanan;
   const netOngkir           = ongkirDiterima + subsidiOngkir - ongkirKurir;
-  const netDiterima         = nilaiBarang + voucherPlatform + netOngkir - totalPotonganPlatform;
+  const netDiterima         = nilaiBarang + voucherPlatform + netOngkir - totalPotonganPlatform + customFeesTotal;
   const marginKotor         = netDiterima - nilaiHpp;
   const marginPct           = nilaiBarang > 0 ? (marginKotor / nilaiBarang) * 100 : 0;
 
@@ -562,6 +577,82 @@ function MarketplaceTab() {
                 <p className="text-[11px] text-emerald-600">Tambah ke pendapatan</p>
               </div>
             </div>
+
+            {/* Custom fees — admin bisa tambah komponen biaya/potongan dengan nama bebas */}
+            <Separator className="my-4" />
+            <div className="space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium">Biaya / Potongan Tambahan</p>
+                  <p className="text-[11px] text-muted-foreground">Tambah komponen lain (mis. Biaya Iklan, Cashback Penjual, dll). Beri nama bebas.</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" className="gap-1.5 shrink-0" onClick={addCustomFee}>
+                  <Plus className="h-3.5 w-3.5" /> Tambah Kolom
+                </Button>
+              </div>
+              {customFees.length === 0 && (
+                <p className="rounded-lg border border-dashed py-3 text-center text-[11px] text-muted-foreground">
+                  Belum ada komponen tambahan.
+                </p>
+              )}
+              {customFees.map((f, idx) => {
+                const row = customFeeRows[idx];
+                return (
+                  <div key={f.id} className="grid grid-cols-12 items-end gap-2 rounded-lg border bg-muted/20 p-2.5">
+                    <div className="col-span-12 sm:col-span-5 space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Nama Komponen</Label>
+                      <Input
+                        placeholder="cth: Biaya Iklan Shopee"
+                        value={f.name}
+                        onChange={e => updateCustomFee(f.id, { name: e.target.value })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-5 sm:col-span-2 space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Tipe</Label>
+                      <div className="flex h-8 rounded-md border overflow-hidden">
+                        {(["rp","pct"] as const).map(k => (
+                          <button key={k} type="button" onClick={() => updateCustomFee(f.id, { kind: k })}
+                            className={`flex-1 text-[11px] font-medium ${f.kind === k ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground"}`}>
+                            {k === "rp" ? "Rp" : "%"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="col-span-7 sm:col-span-3 space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Nilai</Label>
+                      <Input
+                        type="number" min={0} step={f.kind === "pct" ? "0.1" : "1"}
+                        value={f.value || ""}
+                        onChange={e => updateCustomFee(f.id, { value: Number(e.target.value) })}
+                        className="h-8 text-xs"
+                      />
+                    </div>
+                    <div className="col-span-9 sm:col-span-1 space-y-1">
+                      <Label className="text-[11px] text-muted-foreground">Arah</Label>
+                      <Select value={f.sign} onValueChange={v => { if (v === "plus" || v === "minus") updateCustomFee(f.id, { sign: v }); }}>
+                        <SelectTrigger className="h-8 text-xs px-2"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="minus">−</SelectItem>
+                          <SelectItem value="plus">+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-3 sm:col-span-1 flex justify-end">
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeCustomFee(f.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    <div className="col-span-12 -mt-1 flex justify-between text-[11px]">
+                      <span className="text-muted-foreground">{f.kind === "pct" ? `${f.value || 0}% × nilai barang` : "Nominal tetap"}</span>
+                      <span className={row.sign === "plus" ? "text-emerald-700 font-medium" : "text-amber-700 font-medium"}>
+                        {row.sign === "plus" ? "+" : "−"}{formatRp(row.nominal)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
 
@@ -602,6 +693,12 @@ function MarketplaceTab() {
                 <div className="flex justify-between text-amber-700"><span>MDR</span><span>-{formatRp(mdrNominal)}</span></div>
                 <div className="flex justify-between text-amber-700"><span>Biaya Layanan</span><span>-{formatRp(biayaLayanan)}</span></div>
                 <div className="flex justify-between text-emerald-700"><span>Voucher Platform</span><span>+{formatRp(voucherPlatform)}</span></div>
+                {customFeeRows.map(f => (
+                  <div key={f.id} className={`flex justify-between ${f.sign === "plus" ? "text-emerald-700" : "text-amber-700"}`}>
+                    <span className="truncate">{f.name || "(Tanpa nama)"}</span>
+                    <span>{f.sign === "plus" ? "+" : "−"}{formatRp(f.nominal)}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between text-muted-foreground col-span-2 pt-1 border-t"><span>Net Ongkir</span><span className={netOngkir >= 0 ? "text-emerald-700" : "text-destructive"}>{netOngkir >= 0 ? "+" : ""}{formatRp(netOngkir)}</span></div>
               </div>
               <Separator />

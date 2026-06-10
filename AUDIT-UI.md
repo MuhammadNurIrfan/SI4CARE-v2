@@ -2,7 +2,22 @@
 
 Prototipe UI untuk presentasi klien (data masih mock, belum ada backend).
 
-## Yang dikerjakan pada sesi ini
+## Update sesi terakhir (10 Juni 2026 — sore)
+
+1. **Kolom biaya/potongan custom (POS Marketplace)** — di tab Transaksi Marketplace, admin kini bisa menekan **+ Tambah Kolom** pada kartu *Biaya & Potongan Platform* untuk menambah komponen biaya/potongan tambahan dengan **nama bebas** (mis. "Biaya Iklan Shopee", "Cashback Penjual"). Tiap kolom punya: nama bebas, tipe (Rp / %), nilai, arah (+/−). Otomatis ikut dihitung di rekap Net Diterima & Margin Bersih.
+2. **Tombol Hubungi Kami mengambang** — FAB di sisi kanan-bawah seluruh halaman landing (komponen `src/components/layout/floating-contact.tsx`). Saat diklik buka 2 opsi: **WhatsApp** (deep-link `wa.me`) atau **Room Chat Admin** (`/account/chat`).
+3. **Room chat pelanggan** — halaman baru `/account/chat`: UI chat dengan riwayat percakapan, balasan admin tersimulasi. Menu **Chat Admin** ditambahkan ke sidebar akun.
+4. **Menu Pesan di Back-Office** — menu baru `/admin/messages`: daftar percakapan + thread chat, search, badge unread. Ditambahkan ke `app-sidebar.tsx` (grup *Operasional*).
+5. **Halaman Hubungi Kami disesuaikan** — fokus utama dua kartu besar (WhatsApp & Room Chat). Alamat, email, dan jam operasional dipindah ke strip kecil di bawah dengan ukuran teks kecil agar tetap profesional tanpa mendominasi.
+6. **Grid produk mobile lebih padat** — `shop/page.tsx` kini 2 kolom di mobile (sebelumnya 1). `ProductCard` dikecilkan di breakpoint mobile: padding, font, badge, dan ilustrasi semuanya scaled-down. Hasil: 4–6 produk terlihat sekaligus di satu layar mobile.
+7. **Audit responsivitas mobile** — diperbaiki:
+   - `admin/discounts` — TabsList kini bisa scroll horizontal di mobile (4 tab tidak lagi terpotong). Tabel voucher & clearance ED diberi **mobile card view** (`md:hidden`).
+   - `admin/inbound` — tabel "Daftar Item Masuk" dan "Riwayat Batch" diberi mobile card view.
+   - `admin/content`, `account/orders`, `shop/[id]` — TabsList dibungkus container scroll horizontal dengan `whitespace-nowrap`.
+
+---
+
+## Yang dikerjakan pada sesi sebelumnya
 
 1. **Barcode per item** — kolom barcode di Produk & Harga: bisa input/scan barcode yang sudah ada, atau klik *Generate* (format EAN-13). Preview langsung **barcode garis (Code128)** dan **QR code**, bisa diunduh sebagai SVG dari dialog barcode. Pencarian produk & POS juga mendukung barcode.
 2. **POS mobile** — keranjang kasir dipindah ke *bottom sheet*: katalog kini memakai layar penuh, item mudah dipilih, ada tombol keranjang melayang berisi jumlah item + total. Tinggi halaman memakai `dvh` agar tidak terpotong di browser mobile.
@@ -20,7 +35,8 @@ Prototipe UI untuk presentasi klien (data masih mock, belum ada backend).
 | Landing (hero, benefit, produk, testimoni, FAQ, CTA, blog) | Lengkap, konten dinamis dari CMS |
 | Shop (katalog, filter, detail produk, keranjang, checkout, sukses) | Lengkap |
 | Akun (pesanan, alamat, retur) + login/register/lupa password | Lengkap |
-| Admin: dashboard, POS, pesanan, marketplace, produk, kategori, inbound, stock opname, diskon, konten, laporan, alarm, pengaturan | Lengkap |
+| Admin: dashboard, POS, pesanan, marketplace, pesan, produk, kategori, inbound, stock opname, diskon, konten, laporan, alarm, pengaturan | Lengkap |
+| Akun pelanggan: profil, alamat, pesanan, retur, chat admin | Lengkap |
 
 ## Rekomendasi penyempurnaan (prioritas)
 

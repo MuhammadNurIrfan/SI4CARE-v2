@@ -3,7 +3,7 @@
 import { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User, MapPin, Package, Undo2, LogOut } from "lucide-react";
+import { User, MapPin, Package, Undo2, LogOut, MessageSquare } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/account/addresses", icon: MapPin, label: "Buku Alamat" },
   { href: "/account/orders", icon: Package, label: "Riwayat Pesanan" },
   { href: "/account/returns", icon: Undo2, label: "Pengajuan Retur" },
+  { href: "/account/chat", icon: MessageSquare, label: "Chat Admin" },
 ];
 
 export default function AccountLayout({ children }: { children: ReactNode }) {

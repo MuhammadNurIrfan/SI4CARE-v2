@@ -50,12 +50,14 @@ export default function DiscountsPage() {
       </div>
 
       <Tabs defaultValue="voucher" className="gap-5">
-        <TabsList className="h-9 flex-wrap">
-          <TabsTrigger value="voucher" className="px-3"><Ticket className="mr-1.5 h-4 w-4" /> Voucher</TabsTrigger>
-          <TabsTrigger value="berjenjang" className="px-3"><Layers className="mr-1.5 h-4 w-4" /> Diskon Berjenjang</TabsTrigger>
-          <TabsTrigger value="ongkir" className="px-3"><Truck className="mr-1.5 h-4 w-4" /> Subsidi Ongkir</TabsTrigger>
-          <TabsTrigger value="clearance" className="px-3"><Clock4 className="mr-1.5 h-4 w-4" /> Clearance ED</TabsTrigger>
-        </TabsList>
+        <div className="-mx-4 md:mx-0 overflow-x-auto px-4 md:px-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList className="h-9 w-max">
+            <TabsTrigger value="voucher" className="px-3 whitespace-nowrap"><Ticket className="mr-1.5 h-4 w-4" /> Voucher</TabsTrigger>
+            <TabsTrigger value="berjenjang" className="px-3 whitespace-nowrap"><Layers className="mr-1.5 h-4 w-4" /> Diskon Berjenjang</TabsTrigger>
+            <TabsTrigger value="ongkir" className="px-3 whitespace-nowrap"><Truck className="mr-1.5 h-4 w-4" /> Subsidi Ongkir</TabsTrigger>
+            <TabsTrigger value="clearance" className="px-3 whitespace-nowrap"><Clock4 className="mr-1.5 h-4 w-4" /> Clearance ED</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="voucher"><VoucherManager /></TabsContent>
         <TabsContent value="berjenjang"><TieredDiscount /></TabsContent>
@@ -92,7 +94,8 @@ function VoucherManager() {
 
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -133,6 +136,39 @@ function VoucherManager() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden divide-y">
+            {vouchers.map((v) => (
+              <div key={v.id} className="p-3 space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-xs font-bold text-primary">{v.code}</span>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {v.type === "persen" ? `${v.value}% potongan` : `Potong ${formatRp(v.value)}`}
+                      {v.maxPotongan ? ` · maks ${formatRp(v.maxPotongan)}` : ""}
+                    </p>
+                  </div>
+                  <Switch checked={v.active} onCheckedChange={(c) => setVouchers((p) => p.map((x) => (x.id === v.id ? { ...x, active: c } : x)))} />
+                </div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                  <div><span className="text-muted-foreground">Min. belanja: </span><span className="font-medium">{v.minBelanja ? formatRp(v.minBelanja) : "—"}</span></div>
+                  <div><span className="text-muted-foreground">Berlaku: </span><span className="font-medium">{v.berlaku || "—"}</span></div>
+                  <div><span className="text-muted-foreground">Kuota: </span><span className={`font-medium ${v.terpakai >= v.kuota ? "text-destructive" : ""}`}>{v.terpakai}/{v.kuota}</span></div>
+                  <div><span className="text-muted-foreground">Cakupan: </span><Badge variant="outline" className="text-[10px] py-0">{v.scope}</Badge></div>
+                </div>
+                <div className="flex gap-2 pt-1">
+                  <Button variant="outline" size="sm" className="flex-1 h-8 gap-1.5" onClick={() => openEdit(v)}>
+                    <Pencil className="h-3.5 w-3.5" /> Edit
+                  </Button>
+                  <Button variant="outline" size="sm" className="h-8 text-destructive hover:bg-destructive/10" onClick={() => setVouchers((p) => p.filter((x) => x.id !== v.id))}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+            {vouchers.length === 0 && <p className="py-10 text-center text-sm text-muted-foreground">Belum ada voucher</p>}
           </div>
         </CardContent>
       </Card>
@@ -334,7 +370,7 @@ function ClearanceED() {
         <CardDescription>Terapkan diskon otomatis pada batch yang mendekati ED untuk menekan kerugian write-off.</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -366,8 +402,31 @@ function ClearanceED() {
             </TableBody>
           </Table>
         </div>
+        {/* Mobile cards */}
+        <div className="md:hidden divide-y">
+          {items.map((it) => (
+            <div key={it.batch} className="p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium leading-tight">{it.produk}</p>
+                  <p className="font-mono text-[11px] text-muted-foreground">{it.batch} · ED {it.ed}</p>
+                </div>
+                <Switch defaultChecked={it.usulDiskon > 0} disabled={it.usulDiskon === 0} />
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                <div><span className="text-muted-foreground">Sisa: </span><span className={`font-medium ${it.sisaHari <= 30 ? "text-destructive" : it.sisaHari <= 90 ? "text-amber-600" : ""}`}>{it.sisaHari} hari</span></div>
+                <div><span className="text-muted-foreground">Harga: </span><span className="font-medium">{formatRp(it.jual)}</span></div>
+                <div className="col-span-2">
+                  {it.usulDiskon > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-amber-700 font-medium"><Percent className="h-3 w-3" /> {it.usulDiskon}% → {formatRp(it.jual * (1 - it.usulDiskon / 100))}</span>
+                  ) : <span className="text-muted-foreground">Belum perlu diskon</span>}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
         <div className="flex items-center gap-2 border-t bg-muted/30 p-3 text-xs text-muted-foreground">
-          <Tag className="h-4 w-4 text-primary" /> Diskon clearance otomatis diberi label &ldquo;Promo ED&rdquo; di etalase dan struk.
+          <Tag className="h-4 w-4 text-primary shrink-0" /> Diskon clearance otomatis diberi label &ldquo;Promo ED&rdquo; di etalase dan struk.
         </div>
       </CardContent>
     </Card>

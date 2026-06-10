@@ -209,11 +209,13 @@ export default function ProductDetailPage({ params }: { params: Promise<{ id: st
 
       {/* Tabs */}
       <Tabs defaultValue="description" className="gap-5">
-        <TabsList variant="line" className="w-full justify-start border-b">
-          <TabsTrigger value="description" className="px-5">Deskripsi</TabsTrigger>
-          <TabsTrigger value="specs" className="px-5">Spesifikasi</TabsTrigger>
-          <TabsTrigger value="reviews" className="px-5">Ulasan ({productData.reviews})</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabsList variant="line" className="w-max justify-start border-b">
+            <TabsTrigger value="description" className="px-4 sm:px-5 whitespace-nowrap">Deskripsi</TabsTrigger>
+            <TabsTrigger value="specs" className="px-4 sm:px-5 whitespace-nowrap">Spesifikasi</TabsTrigger>
+            <TabsTrigger value="reviews" className="px-4 sm:px-5 whitespace-nowrap">Ulasan ({productData.reviews})</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="description" className="pt-4">
           <div className="max-w-3xl space-y-4">

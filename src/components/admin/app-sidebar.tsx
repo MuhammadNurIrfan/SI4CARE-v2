@@ -3,7 +3,7 @@
 import {
   ShoppingCart, LayoutDashboard, Package, RefreshCcw, Store, Settings,
   LogOut, Bell, BarChart2, PackagePlus, Ticket, FileText, HelpCircle, ChevronRight,
-  FolderOpen, ClipboardCheck,
+  FolderOpen, ClipboardCheck, MessageSquare,
 } from "lucide-react";
 import {
   Sidebar,
@@ -31,6 +31,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Kasir (POS)", url: "/admin/pos", icon: ShoppingCart },
       { title: "Pesanan Web", url: "/admin/orders", icon: RefreshCcw, badge: 3, tone: "primary" },
       { title: "Marketplace", url: "/admin/marketplace", icon: Store, badge: 4, tone: "alert" },
+      { title: "Pesan", url: "/admin/messages", icon: MessageSquare, badge: 2, tone: "primary" },
     ],
   },
   {
