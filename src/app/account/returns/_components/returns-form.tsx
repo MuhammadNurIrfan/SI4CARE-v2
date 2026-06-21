@@ -85,7 +85,7 @@ export function ReturnsForm({
               {orders.length === 0
                 ? <p className="text-sm text-muted-foreground border rounded-lg px-4 py-3">Tidak ada pesanan yang memenuhi syarat retur (status: Terkirim).</p>
                 : (
-                  <Select value={orderId} onValueChange={setOrderId} required>
+                  <Select value={orderId} onValueChange={(v) => { if (v) setOrderId(v); }} required>
                     <SelectTrigger><SelectValue placeholder="Pilih invoice yang sudah diterima..." /></SelectTrigger>
                     <SelectContent>
                       {orders.map((o) => (
