@@ -19,7 +19,9 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { authClient } from "@/lib/auth/client";
+import { getInitials } from "@/lib/utils";
 
 type NavItem = { title: string; url: string; icon: typeof LayoutDashboard; badge?: number; tone?: "primary" | "alert" };
 
@@ -31,6 +33,7 @@ const navGroups: { label: string; items: NavItem[] }[] = [
       { title: "Kasir (POS)", url: "/admin/pos", icon: ShoppingCart },
       { title: "Pesanan Web", url: "/admin/orders", icon: RefreshCcw, badge: 3, tone: "primary" },
       { title: "Marketplace", url: "/admin/marketplace", icon: Store, badge: 4, tone: "alert" },
+      { title: "Retur", url: "/admin/returns", icon: RefreshCcw },
       { title: "Pesan", url: "/admin/messages", icon: MessageSquare, badge: 2, tone: "primary" },
     ],
   },
@@ -66,9 +69,17 @@ const navGroups: { label: string; items: NavItem[] }[] = [
 const ACTIVE = "bg-gradient-to-r from-primary to-[oklch(0.55_0.12_176)] !text-white shadow-lg shadow-primary/30 hover:!text-white";
 const IDLE = "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white";
 
-export function AppSidebar() {
+type AdminUser = { name: string; email: string };
+
+export function AppSidebar({ user }: { user: AdminUser }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { setOpenMobile } = useSidebar();
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push("/login");
+  }
 
   return (
     <Sidebar className="border-r-0">
@@ -136,11 +147,11 @@ export function AppSidebar() {
       <SidebarFooter className="gap-2 p-3">
         <div className="flex items-center gap-3 rounded-2xl bg-white/5 p-2.5 ring-1 ring-white/10">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-primary to-[oklch(0.55_0.12_176)] text-sm font-bold text-white">
-            AD
+            {getInitials(user.name)}
           </div>
           <div className="min-w-0 flex-1 leading-tight">
-            <p className="truncate text-sm font-semibold text-white">Super Admin</p>
-            <p className="truncate text-[11px] text-sidebar-foreground/50">admin@si4care.id</p>
+            <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/50">{user.email}</p>
           </div>
         </div>
         <SidebarMenu>
@@ -151,7 +162,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton className="h-9 rounded-xl text-red-300 hover:bg-destructive/20 hover:text-red-200" render={<Link href="/" />}>
+            <SidebarMenuButton className="h-9 rounded-xl text-red-300 hover:bg-destructive/20 hover:text-red-200" onClick={handleSignOut}>
               <LogOut />
               <span>Keluar</span>
             </SidebarMenuButton>

@@ -1,0 +1,34 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1781635481240,
+      "tag": "0000_loud_warlock",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1781798194287,
+      "tag": "0001_careful_madame_masque",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1781965651773,
+      "tag": "0002_faulty_captain_flint",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1781975223348,
+      "tag": "0003_wet_jamie_braddock",
+      "breakpoints": true
+    }
+  ]
+}

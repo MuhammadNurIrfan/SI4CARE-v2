@@ -10,13 +10,14 @@ import { PRODUCT_ART, HeartPulseArt } from "@/app/(landing)/_components/illustra
 
 export interface Product {
   id: string;
+  variantId: string;   // UUID nyata dari DB — wajib untuk checkout
   name: string;
   price: number;
   originalPrice?: number;
   category: string;
   stock: number;
   art?: string;
-  brand?: string;
+  brand?: string | null;
   rating?: number;
   sold?: number;
 }
@@ -44,7 +45,7 @@ export function ProductCard({ product }: { product: Product }) {
     addItem({
       productId: product.id,
       name: product.name,
-      variantId: "default",
+      variantId: product.variantId,
       variantName: "Standar",
       price: product.price,
       quantity: 1,

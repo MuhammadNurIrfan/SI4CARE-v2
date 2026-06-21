@@ -6,28 +6,10 @@
  * memang berbeda — keduanya mensimulasikan dataset modul yang berbeda untuk demo.
  */
 
-import type { Product } from "@/components/shop/product-card";
 import type { CartItem } from "@/context/CartContext";
 
-/* ─── Katalog toko (shop, landing) ─────────────────────────────── */
-
-export const SHOP_PRODUCTS: Product[] = [
-  { id: "1", name: "Tensimeter Digital Omron HEM-7120", price: 540000, originalPrice: 620000, category: "Alat Diagnostik", stock: 15, art: "tensimeter", brand: "Omron", rating: 4.9, sold: 324 },
-  { id: "2", name: "Tensimeter Lengan Atas Yuwell YE660D", price: 410000, category: "Alat Diagnostik", stock: 22, art: "tensimeter", brand: "Yuwell", rating: 4.7, sold: 156 },
-  { id: "3", name: "Nebulizer Kompresor Omron NE-C28", price: 620000, category: "Alat Terapi", stock: 8, art: "nebulizer", brand: "Omron", rating: 4.8, sold: 142 },
-  { id: "4", name: "Nebulizer Portable Yuwell Mesh", price: 385000, originalPrice: 450000, category: "Alat Terapi", stock: 19, art: "nebulizer", brand: "Yuwell", rating: 4.6, sold: 98 },
-  { id: "5", name: "Kursi Roda Lipat Standar Sella", price: 1250000, category: "Alat Bantu Jalan", stock: 5, art: "wheelchair", brand: "Sella", rating: 4.7, sold: 64 },
-  { id: "6", name: "Kursi Roda Travelling Ringan", price: 1680000, category: "Alat Bantu Jalan", stock: 3, art: "wheelchair", brand: "GEA Medical", rating: 4.8, sold: 31 },
-  { id: "7", name: "Pulse Oximeter Fingertip Yuwell", price: 175000, originalPrice: 220000, category: "Alat Diagnostik", stock: 30, art: "oximeter", brand: "Yuwell", rating: 4.8, sold: 210 },
-  { id: "8", name: "Termometer Tembak Infrared OneMed", price: 150000, originalPrice: 195000, category: "Alat Diagnostik", stock: 50, art: "thermometer", brand: "OneMed", rating: 4.6, sold: 188 },
-  { id: "9", name: "Masker Medis 3-Ply OneMed (Box 50)", price: 25000, category: "APD", stock: 100, art: "mask", brand: "OneMed", rating: 4.9, sold: 1240 },
-  { id: "10", name: "Masker N95 GEA Medical (isi 20)", price: 95000, originalPrice: 120000, category: "APD", stock: 0, art: "mask", brand: "GEA Medical", rating: 4.8, sold: 540 },
-  { id: "11", name: "Stetoskop Littmann Classic III", price: 1850000, category: "Alat Diagnostik", stock: 4, art: "stethoscope", brand: "Littmann", rating: 5.0, sold: 47 },
-  { id: "12", name: "Stetoskop Dual Head GEA Medical", price: 165000, category: "Alat Diagnostik", stock: 26, art: "stethoscope", brand: "GEA Medical", rating: 4.5, sold: 73 },
-];
-
-export const SHOP_CATEGORIES = ["Alat Diagnostik", "Alat Terapi", "Alat Bantu Jalan", "APD"];
-export const SHOP_BRANDS = ["Omron", "Yuwell", "Sella", "OneMed", "GEA Medical", "Littmann"];
+// SHOP_PRODUCTS, SHOP_CATEGORIES, SHOP_BRANDS — dihapus 2026-06-19.
+// Shop sekarang mengambil data dari DB via getShopProducts() (src/actions/products.ts).
 
 /** Kartu carousel "Produk Unggulan" di landing. `art` = kunci PRODUCT_ART. */
 export type FeaturedProduct = {

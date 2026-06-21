@@ -2,10 +2,12 @@
 
 import { ReactNode } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { User, MapPin, Package, Undo2, LogOut, MessageSquare } from "lucide-react";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
+import { authClient } from "@/lib/auth/client";
+import { getInitials } from "@/lib/utils";
 
 const navItems = [
   { href: "/account", icon: User, label: "Profil Saya" },
@@ -17,6 +19,13 @@ const navItems = [
 
 export default function AccountLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { data: session } = authClient.useSession();
+
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push("/login");
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-muted/20">
@@ -29,11 +38,11 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
               <div className="bg-card border rounded-xl p-4 sticky top-28 shadow-sm">
                 <div className="flex items-center gap-4 mb-6 p-2">
                   <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-xl">
-                    BS
+                    {session ? getInitials(session.user.name) : "…"}
                   </div>
                   <div>
-                    <p className="font-bold">Budi Santoso</p>
-                    <p className="text-xs text-muted-foreground">budi@example.com</p>
+                    <p className="font-bold">{session?.user.name ?? "Memuat…"}</p>
+                    <p className="text-xs text-muted-foreground">{session?.user.email ?? ""}</p>
                   </div>
                 </div>
                 
@@ -57,13 +66,13 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
                   })}
                   
                   <div className="pt-4 mt-4 border-t">
-                    <Link
-                      href="/"
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-destructive hover:bg-destructive/10"
+                    <button
+                      onClick={handleSignOut}
+                      className="flex w-full items-center gap-3 px-3 py-2.5 rounded-lg transition-colors text-sm font-medium text-destructive hover:bg-destructive/10"
                     >
                       <LogOut className="h-4 w-4" />
                       Keluar
-                    </Link>
+                    </button>
                   </div>
                 </nav>
               </div>

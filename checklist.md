@@ -2,7 +2,7 @@
 
 > Dokumen handoff. Dibaca AI/developer mana pun yang melanjutkan proyek ini.
 > Update file ini setiap sesi: centang yang selesai, tambah catatan di bagian "Log Sesi".
-> Terakhir diperbarui: 2026-06-11.
+> Terakhir diperbarui: 2026-06-17.
 
 ---
 
@@ -12,10 +12,11 @@
 |---|---|
 | Produk | si4care — platform toko alat kesehatan (e-commerce + back-office/POS) |
 | Stack aktual | **Next.js 16 (App Router, src/) + React 19 + TypeScript strict + Tailwind v4 + shadcn/ui (base-ui) + framer-motion + recharts** |
-| Status | **Prototipe FRONTEND ONLY untuk presentasi klien.** Semua data mock/hardcode/localStorage. Backend, DB, auth, pembayaran = DITUNDA, belum dikerjakan. |
+| Status | UI masih frontend-only (mock/localStorage), **migrasi backend sudah dimulai 2026-06-17** — Fase 0 (setup) selesai, lihat §7a. |
 | Bahasa UI | Indonesia |
-| Dokumen sumber | `prd.md` (requirement), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx` |
+| Dokumen sumber | `prd.md` (requirement), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`, `docs/migration-plan-backend.pdf` (rencana migrasi), `docs/adr/0001-backend-stack.md` |
 | Perintah | `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` |
+| Backend (baru) | MySQL (lokal: MariaDB 10.4.28 via XAMPP, port 3307) + Drizzle ORM + Better Auth + Upstash Redis + Midtrans + RajaOngkir — lihat ADR-0001 |
 
 **Keputusan desain yang TIDAK boleh diubah tanpa persetujuan owner:**
 - Design token di `src/app/globals.css` (oklch): Medical Blue `0.50 0.16 228`, Soft Teal accent, sidebar Deep Navy. Satu accent, netral matang — JANGAN tambah warna baru di luar token.
@@ -97,29 +98,80 @@ Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan
 
 ---
 
-## 7. MENUJU PRODUKSI (DITUNDA — kerjakan hanya jika owner menyatakan lanjut)
+## 7. MENUJU PRODUKSI (migrasi backend — DIMULAI 2026-06-17)
 
-Urutan yang disarankan (vertical slice per domain, bukan layer-by-layer):
+Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipetakan ke file prototipe yang ada). Urutan di bawah ini ringkasannya — vertical slice per domain, bukan layer-by-layer.
 
-### 7a. Fondasi
-- [ ] ADR-0001: pilih backend (opsi wajar: Next.js Route Handlers + Prisma/Drizzle + PostgreSQL, ATAU Laravel API terpisah — putuskan & catat alasan di `docs/adr/`)
-- [ ] Skema DB dari prd.md — snake_case plural, prefix per domain bila perlu (`shop_*`, `pos_*`, `cms_*`); FK eksplisit
-- [ ] `.env` + validasi env (mis. zod) — JANGAN hardcode secret
-- [ ] Auth + role (Owner / Kasir / Admin Konten — sidebar admin sudah menyiratkan ini); rate-limit login
-- [ ] Middleware proteksi `/admin/*` per role
+### 7a. Fondasi (Fase 0)
+- [x] **ADR-0001: stack backend dipilih & dicatat** — MySQL + Drizzle ORM + Better Auth + Upstash Redis + Midtrans + RajaOngkir, satu stack (tanpa API server terpisah). Alasan: tim 2 orang, familiar MySQL, konsisten dengan `prd.md` §5. Detail di `docs/adr/0001-backend-stack.md`.
+- [x] **Dependensi terinstall**: `drizzle-orm`, `mysql2`, `better-auth`, `@upstash/redis`, `drizzle-kit` (dev)
+- [x] **MySQL lokal siap**: MariaDB 10.4.28 via XAMPP, database `db_toko_si4care` dibuat (0 tabel — skema belum ditulis). Port **3307** (bukan 3306 default — bentrok dengan service MySQL Homebrew lain di mesin dev; lihat ADR-0001).
+- [x] **`.env.local` dibuat** dengan `DATABASE_URL` (terisi & terverifikasi konek), `BETTER_AUTH_SECRET`+`BETTER_AUTH_URL` (terisi), serta placeholder kosong untuk `GOOGLE_CLIENT_ID/SECRET`, `REDIS_URL`/`UPSTASH_REDIS_REST_*`, `MIDTRANS_*`, `RAJAONGKIR_API_KEY` — **belum** ada validasi env via zod, isi placeholder masih kosong (perlu didaftarkan ke Upstash/Midtrans Sandbox/Google Cloud Console/RajaOngkir saat mau lanjut fase yang membutuhkannya)
+- [x] **Struktur folder dibuat**: `src/lib/db`, `src/lib/auth`, `src/lib/services`, `src/lib/validations`, `src/actions` (masih kosong/placeholder — isi menyusul di Fase 1.1)
+- [x] Skema DB awal (Drizzle) — selesai sebagai bagian Fase 1.1 di bawah
+
+### 7a-lanjutan. Fase 1.1 — Schema dasar & Auth (selesai 2026-06-17)
+- [x] **Tabel `user`/`session`/`account`/`verification`** di-generate via `npx @better-auth/cli generate` (jangan edit `src/lib/db/auth-schema.ts` manual, regenerate ulang kalau config auth berubah). Field tambahan: `role` (text, default `customer`) dan `phone` (text).
+- [x] **Role yang dipakai sesuai `prd.md` §6**: `super_admin` / `admin` / `customer` — bukan "Owner/Kasir/Admin Konten" seperti yang sempat disebut di versi checklist sebelumnya (itu hanya inferensi dari sidebar, tidak ada di skema PRD). **Keputusan owner 2026-06-17: cukup 3 role ini, tidak perlu granularitas Kasir/Admin Konten terpisah** — semua yang role-nya admin/super_admin boleh akses semua menu `/admin`. Dianggap **selesai**, bukan utang lagi.
+- [x] **Tabel `addresses`** (FK ke `user.id`, cascade delete) — server actions CRUD di `src/actions/addresses.ts` (anti-IDOR: tiap mutasi cek kepemilikan via `userId`), halaman `account/addresses` dipecah jadi server component (`page.tsx`, fetch langsung) + client component (`_components/addresses-client.tsx`, dialog tambah/ubah + dropdown aksi)
+- [x] **Better Auth dikonfigurasi** (`src/lib/auth/index.ts`): email/password + Google OAuth (kredensial masih placeholder kosong, tombol Google baru fungsional setelah `GOOGLE_CLIENT_ID/SECRET` diisi), drizzle adapter. Client hooks di `src/lib/auth/client.ts` (pakai plugin `inferAdditionalFields` agar `role`/`phone` ter-tipe di client).
+- [x] **`login/page.tsx` & `register/page.tsx`** disambungkan nyata ke Better Auth (form submit, loading/error state) — tidak lagi dummy `<Link>`.
+- [x] **`account/layout.tsx`**: nama/email dari `useSession()`, tombol "Keluar" memanggil `signOut()` lalu redirect ke `/login`.
+- [x] **`admin/layout.tsx`**: jadi async server component, cek `auth.api.getSession` — redirect ke `/login` bila tidak ada sesi, redirect ke `/` bila role bukan admin/super_admin. Data user diteruskan ke `AppSidebar` (footer + tombol Keluar nyata) & header (nama asli, bukan "Super Admin" hardcode).
+- [x] **`src/proxy.ts`** (bukan `middleware.ts` — Next.js 16 men-deprecate konvensi itu, lihat `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`): gate cepat berbasis cookie untuk `/admin/*` & `/account/*`, redirect ke `/login?redirect=...` bila tak ada sesi sama sekali. Cek role tetap di layout (butuh query DB, proxy hanya cek cookie).
+- [x] **Diuji end-to-end via curl**: sign-up → role default `customer` tersimpan benar; akses `/admin` sebagai customer → redirect ke `/`; promote role ke `admin` langsung di DB → akses `/admin` jadi 200; akses `/account/addresses` tanpa cookie → redirect ke `/login`; sign-in mengembalikan role terbaru. Data uji sudah dihapus dari DB setelah verifikasi.
+- [ ] Rate-limit login — **dipindah ke Fase 1.3** (Online shop/checkout): butuh Upstash Redis aktif untuk simpan counter percobaan login, dan Redis pertama kali memang diaktifkan di 1.3 untuk cache ongkir RajaOngkir — sekalian setup di situ, jangan lupa.
+
+**Catatan teknis penting (operasional MySQL/MariaDB lokal):** `drizzle-kit push` punya bug reproducible di MariaDB 10.4.28 — push kedua ke tabel yang sudah ada selalu gagal dengan `ER_MULTIPLE_PRI_KEY` pada tabel `account` (drizzle-kit salah membaca PK saat re-introspeksi). **Solusinya: pakai `npm run db:generate` lalu `npm run db:migrate`** (migration file based, terbukti idempotent — sudah dites jalan 2x tanpa error), bukan `npm run db:push`. Script `db:push` masih ada di `package.json` tapi hindari dipakai berulang di tabel yang sudah ada.
 
 ### 7b. Integrasi per domain (tiap baris = 1 slice penuh DB→API→UI→validasi)
-- [ ] Produk + kategori + varian (gantikan mock-data.ts)
+- [x] **Fase 1.2 — Katalog (kategori → produk → varian → batch)** — selesai 2026-06-18:
+  - Tabel `categories`, `products`, `variants`, `batches` di-migrate ke `db_toko_si4care`.
+  - FIFO/FEFO engine murni di `src/lib/utils/stockAllocation.ts` (sesuai prd.md §8.2, pure function, siap unit-test).
+  - `admin/categories/page.tsx` → async server component + `_components/categories-client.tsx`; upload foto ke `public/uploads/` via `/api/upload` (swap ke R2/S3 sebelum deploy — `public/` read-only di Vercel).
+  - `admin/products/page.tsx` → async server component + `_components/products-client.tsx` + `product-dialog.tsx`; model produk+varian (satu produk = satu atau lebih varian SKU); stok computed dari SUM(batches.remaining) — read-only di halaman ini, ditambah via inbound.
+  - `admin/inbound/page.tsx` → server wrapper + `_components/inbound-client.tsx`; "Simpan Transaksi Masuk" memanggil `createBatch()` per item — stok real bertambah di DB.
+  - `CategoryContext.tsx` tetap ada (masih dipakai POS & shop/product-card) — akan dihapus di Fase shop/POS.
+  - `mock-data.ts` masih ada untuk bagian non-katalog (cart, checkout, orders, POS_CATALOG, FEATURED_PRODUCTS) — akan digantikan fase berikutnya.
+  - **Catatan**: `date()` kolom Drizzle MySQL perlu `{ mode: "string" }` agar insert/select sebagai YYYY-MM-DD string. Zod v4 `z.record()` butuh 2 argumen (key+value); `z.number({ invalid_type_error })` diganti tanpa arg.
 - [ ] Konten CMS (gantikan localStorage `si4care_content_v1`)
-- [ ] Keranjang + checkout + pesanan
-- [ ] POS + transaksi marketplace
+- [x] **Fase 1.3 — Checkout + Midtrans + Ongkir + Redis** — selesai 2026-06-19, diuji end-to-end 2026-06-19:
+  - `src/lib/redis.ts` — Upstash Redis client (`@upstash/redis` yang sudah terinstall).
+  - Rate-limit login di `src/lib/auth/index.ts` — `rateLimit.customStorage` pakai Redis (max 5 percobaan / 15 menit per IP).
+  - 4 tabel baru dimigrasikan: `vouchers`, `cart_items`, `orders`, `order_items` — migration `drizzle/0002_faulty_captain_flint.sql`.
+  - `src/actions/vouchers.ts` — `validateVoucher` + `calcDiscount` (gantikan `PROMO_CODES` hardcode).
+  - `src/actions/orders.ts` — `createOrder` (validasi stok via FIFO/FEFO → buat order → Midtrans Snap token), `getMyOrders`, `getOrderDetail`.
+  - `src/lib/midtrans.ts` — singleton Snap + CoreApi client; `MIDTRANS_CLIENT_KEY` & `MIDTRANS_IS_PRODUCTION` di-export untuk dipakai halaman.
+  - `src/lib/validations/order.ts` — `createOrderSchema` dengan Zod.
+  - `/api/shipping/cost` — GET route: query Komerce API (3 kurir paralel) + cache Redis 24 jam; fallback built-in jika Sandbox Komerce tidak mengembalikan data.
+  - `/api/payment/notification` — POST webhook Midtrans: verifikasi SHA512 signature, update status order, deduct `batches.remaining` via alokasi FIFO/FEFO yang sudah tersimpan di `order_items.batch_allocations`.
+  - `checkout/page.tsx` → async server component (session guard, fetch alamat user, load Snap.js via `<Script>`).
+  - `checkout/_components/checkout-client.tsx` — form checkout real: pilih alamat, pilih ongkir dari API, validasi voucher, panggil `createOrder`, lalu `window.snap.pay(token)`.
+  - `checkout/success/page.tsx` — terima `?orderId=` dari URL, tampilkan detail order nyata dari DB.
+  - `actions/addresses.ts` — tambah `getMyAddresses()` + export `AddressRow`.
+  - `.env.local` — diisi: Midtrans Sandbox (SB-Mid-server-... / SB-Mid-client-...), Komerce API key, Upstash Redis URL+Token.
+  - **Catatan deploy**: webhook Midtrans butuh URL publik; saat dev lokal pakai `ngrok` atau Midtrans Simulator.
+  - `CartContext` masih in-memory; `cart_items` tabel ada tapi belum dipakai — akan diisi saat Fase POS/Shop.
+  - `mock-data.ts` masih dipakai untuk FEATURED_PRODUCTS, ORDER_SUCCESS_ITEMS lama, POS_CATALOG — akan digantikan fase berikutnya.
+  - `shop/page.tsx` di-migrate ke server component + `_components/shop-client.tsx`; produk dari DB via `getShopProducts()`.
+  - `src/lib/db/seed.ts` + `npm run db:seed` — 4 kategori, 8 produk, 9 varian+batch, 3 voucher (SEHAT10/ALKES5/DISKON20RB). Idempotent.
+  - **Bug fixes selama testing**: `calcDiscount` dipindah ke `src/lib/utils/discount.ts` (tidak boleh sync export di `"use server"`); `<Script strategy="afterInteractive">` (bukan `beforeInteractive`); `db.query...with` diganti query manual (MariaDB 10.4 tidak support LATERAL JOIN yang dipakai Drizzle relational API).
+  - **Temuan penting MariaDB**: `db.query.X.findFirst/findMany({ with: {...} })` JANGAN dipakai — selalu hasilkan LATERAL JOIN yang gagal di MariaDB 10.4. Ganti dengan `db.select()` + query terpisah untuk relasi.
+- [x] **Fase 1.4 — POS + Transaksi Marketplace** — selesai 2026-06-21:
+  - Schema baru: `outbound_transactions`, `outbound_items`, `ledger_entries` — migration `0003_wet_jamie_braddock.sql`.
+  - `src/lib/pos-calc.ts` — ekstrak kalkulasi murni: `calcLineDiscount`, `calcCartTotals`, `calcMarketplaceNet`, `MDR_RATES`, `PLATFORM_COMMISSION`.
+  - `src/actions/pos.ts` — `getPosProducts()` (join variants+batches+HPP rata-rata tertimbang), `savePosTransaction()` (FIFO/FEFO + potong stok + ledger), `saveMarketplaceTransaction()` (booking stok, status pending_settlement).
+  - `pos/page.tsx` → thin server wrapper; `_components/pos-client.tsx` (tab switcher); `kasir-tab.tsx` + `marketplace-tab.tsx` wired ke DB.
+  - KasirTab: "Konfirmasi Bayar" → server action → potong stok → ledger entry → struk real (refNumber POS-XXXXXX). `router.refresh()` untuk update stok katalog.
+  - MarketplaceTab: "Simpan" → server action → booking stok → `outbound_transactions` status `pending_settlement`.
+- [ ] Manajemen Pesanan web (admin lihat+update status, customer riwayat dari DB)
 - [ ] Inbound + stock opname (mutasi stok atomik/transaction)
 - [ ] Diskon/voucher (validasi server-side, bukan kode hardcode)
 - [ ] Chat pelanggan↔admin (mulai polling sederhana; websocket belakangan)
 - [ ] Laporan (query agregat, bukan hitung di client)
 
 ### 7c. Eksternal & hardening
-- [ ] Pembayaran Midtrans (verifikasi callback signature!) · Ongkir Biteship/RajaOngkir
+- [ ] Pembayaran Midtrans (verifikasi callback signature!) · Ongkir RajaOngkir/Komerce + cache Redis 24 jam + fallback tabel ongkir cadangan
 - [ ] Security pass penuh: validasi server semua input, authZ per resource (anti-IDOR), output escaping, CSRF, security headers/CSP, akun DB non-root least-privilege, audit log aksi sensitif
 - [ ] Test: unit untuk logika harga/diskon/stok, e2e alur checkout & POS
 - [ ] Foto produk: ganti ilustrasi SVG → `next/image` + storage (saat ini 0 pemakaian next/image — wajar karena belum ada foto asli)
@@ -142,3 +194,8 @@ Urutan yang disarankan (vertical slice per domain, bukan layer-by-layer):
 - **2026-06-10** — kolom biaya/potongan custom POS marketplace, floating contact (WA + chat), room chat pelanggan & menu Pesan admin, halaman kontak disederhanakan, grid produk mobile 2 kolom, audit responsivitas (discounts/inbound/content/orders/detail produk).
 - **2026-06-11** — Audit struktur & housekeeping (Claude Code): temuan di bagian 4; dibuat `checklist.md`, `AGENTS.md` diisi aturan proyek.
 - **2026-06-11 (lanjutan)** — Housekeeping dieksekusi: hapus build-verify*/tmp (±780 MB), tsconfig & README & nama package dibereskan, mock data disentralisasi ke `src/lib/mock-data.ts` (9 file konsumen jadi impor). tsc bersih; 12 error lint react-hooks pra-eksisting dicatat di §4.
+- **2026-06-16/17** — Migrasi backend dimulai (owner menyatakan lanjut). Dibuat `docs/migration-plan-backend.pdf` (rencana lengkap per-fase) & `docs/adr/0001-backend-stack.md` (MySQL + Drizzle + Better Auth, satu stack — alasan: tim 2 orang, familiar MySQL, konsisten `prd.md`). Fase 0 dieksekusi: dependensi terinstall, MySQL lokal (MariaDB 10.4.28 via XAMPP, port 3307 karena bentrok port dengan MySQL Homebrew) tersambung ke `db_toko_si4care`, `.env.local` terisi (DATABASE_URL & BETTER_AUTH_SECRET nyata, sisanya placeholder kosong menunggu pendaftaran akun Upstash/Midtrans/Google/RajaOngkir), struktur folder `src/lib/{db,auth,services,validations}` + `src/actions` dibuat. `npx tsc --noEmit` dicek ulang setelah install — bersih.
+- **2026-06-19 — Fase 1.3 diuji end-to-end, lulus**: pembayaran kartu kredit Sandbox berhasil, order tersimpan di DB, stok terpotong via FIFO. Bug: `calcDiscount` dipindah ke `lib/utils/discount.ts`; Script strategy `afterInteractive`; `db.query...with` diganti query manual (MariaDB 10.4 no LATERAL JOIN). Shop di-migrate ke DB sekaligus (bonus). Seed script `npm run db:seed` dibuat (8 produk, 9 varian, 3 voucher).
+- **2026-06-19 — Fase 1.3 selesai (Checkout + Midtrans + Ongkir Komerce + Redis)**: Redis client + rate-limit login (Upstash, max 5/15 menit). 4 tabel baru (vouchers, cart_items, orders, order_items) + migration 0002. `createOrder` server action: validasi stok FIFO/FEFO → insert orders+order_items → Midtrans Snap token. `/api/shipping/cost` (Komerce, 3 kurir paralel, fallback built-in, Redis cache 24 jam). `/api/payment/notification` webhook: SHA512 signature verify → deduct batches.remaining. `checkout/page.tsx` jadi server component (session guard + Snap.js Script). `checkout/_components/checkout-client.tsx` pakai data nyata (alamat DB, ongkir API, voucher DB). Dependensi baru: `midtrans-client`. `npx tsc --noEmit` bersih.
+- **2026-06-18 — Fase 1.2 selesai (Katalog)**: Tabel `categories`/`products`/`variants`/`batches` dibuat & dimigrasikan. FIFO/FEFO engine murni (`src/lib/utils/stockAllocation.ts`) sesuai prd.md §8.2. Upload foto kategori via `/api/upload` → `public/uploads/` (TODO: ganti R2/S3 sebelum deploy). Halaman `admin/categories`, `admin/products`, `admin/inbound` diubah ke server component + DB — tidak lagi pakai `CategoryContext`/`mock-data.ts` untuk admin. `CategoryContext` masih aktif untuk POS & shop. `npx tsc --noEmit` bersih; 12 lint error pra-eksisting tidak bertambah. Temuan Zod v4: `z.record()` butuh 2 arg; `date()` Drizzle MySQL butuh `{ mode: "string" }`.
+- **2026-06-17 (lanjutan) — Fase 1.1 selesai**: skema auth (`user`/`session`/`account`/`verification` via Better Auth CLI generate + field custom `role`/`phone`) dan tabel `addresses` dibuat & dimigrasikan ke `db_toko_si4care`. Better Auth dikonfigurasi penuh (email/password + Google OAuth placeholder), `src/proxy.ts` dibuat (bukan `middleware.ts` — deprecated di Next.js 16, ganti konvensi ke `proxy.ts`/`export function proxy`). Halaman `login`, `register`, `account/layout`, `admin/layout` + `app-sidebar` disambungkan ke session asli (bukan lagi dummy "Budi Santoso"/"Super Admin"); `account/addresses` jadi CRUD nyata via server actions. Diuji end-to-end pakai curl: signup/login, role default `customer`, proteksi `/admin` per role, redirect tanpa sesi — semua sesuai ekspektasi; data uji dihapus setelah verifikasi. `npx tsc --noEmit` & `npm run lint` bersih (12 error react-hooks pra-eksisting tidak bertambah). **Temuan penting**: `drizzle-kit push` punya bug di MariaDB 10.4.28 (gagal `ER_MULTIPLE_PRI_KEY` pada push kedua ke tabel yang sudah ada) — beralih ke workflow `db:generate` + `db:migrate` yang sudah terverifikasi idempotent, dicatat di §7a-lanjutan. Tambahan dependensi: `zod` (sempat hanya transitive lewat better-auth, sekarang dideklarasikan langsung karena dipakai untuk validasi input). Lanjutan: Fase 1.2 — kategori/produk/varian/batch (gantikan `mock-data.ts`).
