@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2, Package } from "lucide-react";
-import { submitReturn, type CustomerOrderOption, type ReturnRow, type ReturnReason } from "@/actions/returns";
+import type { CustomerOrderOption, ReturnRow, ReturnReason } from "@/actions/returns";
+import { submitReturn } from "@/actions/returns";
 
 const REASON_LABELS: Record<ReturnReason, string> = {
   rusak:        "Barang Rusak / Cacat",
@@ -125,7 +125,7 @@ export function ReturnsForm({
               <Label>Bukti Foto / Video (Wajib)</Label>
               <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center text-center cursor-pointer hover:bg-muted/50 transition-colors">
                 <UploadCloud className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-sm font-medium mb-1">Klik untuk upload atau drag & drop</p>
+                <p className="text-sm font-medium mb-1">Klik untuk upload atau drag &amp; drop</p>
                 <p className="text-xs text-muted-foreground">JPG, PNG, atau MP4 (Maks. 10MB)</p>
               </div>
             </div>

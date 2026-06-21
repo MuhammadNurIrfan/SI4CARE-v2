@@ -177,11 +177,11 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
           <Select value={paymentMethod} onValueChange={(v) => { if (v) setPaymentMethod(v); }}>
             <SelectTrigger className="h-7 text-xs flex-1"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="tunai">Tunai (0% MDR)</SelectItem>
-              <SelectItem value="transfer">Transfer Bank (0% MDR)</SelectItem>
-              <SelectItem value="qris">QRIS (0.7% MDR)</SelectItem>
-              <SelectItem value="kartu_debit">Kartu Debit (1.0% MDR)</SelectItem>
-              <SelectItem value="kartu_kredit">Kartu Kredit (2.5% MDR)</SelectItem>
+              <SelectItem value="tunai">Tunai</SelectItem>
+              <SelectItem value="transfer">Transfer Bank</SelectItem>
+              <SelectItem value="qris">QRIS</SelectItem>
+              <SelectItem value="kartu_debit">Kartu Debit</SelectItem>
+              <SelectItem value="kartu_kredit">Kartu Kredit</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -201,7 +201,12 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
           {t.cartDiscValue > 0 && <div className="flex justify-between text-emerald-600"><span>Diskon total{cartDiscType === "pct" ? ` (${cartDisc}%)` : ""}</span><span>-{fmt(t.cartDiscValue)}</span></div>}
           <div className="flex justify-between"><span>DPP</span><span className="text-foreground">{fmt(t.dpp)}</span></div>
           <div className="flex justify-between"><span>PPN 12%</span><span className="text-foreground">{fmt(t.ppn)}</span></div>
-          {(MDR_RATES[paymentMethod] ?? 0) > 0 && <div className="flex justify-between text-amber-600"><span>MDR {MDR_RATES[paymentMethod]}%</span><span>-{fmt(t.mdrAmount)}</span></div>}
+          {(MDR_RATES[paymentMethod] ?? 0) > 0 && (
+            <div className="flex justify-between text-amber-600 text-[11px]">
+              <span>MDR {MDR_RATES[paymentMethod]}% <span className="text-muted-foreground">(ditanggung toko)</span></span>
+              <span>-{fmt(t.mdrAmount)}</span>
+            </div>
+          )}
         </div>
         <Separator />
         <div className="flex justify-between items-center">
@@ -338,7 +343,7 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
                 <div className="w-40 h-40 bg-muted rounded-lg border-2 border-dashed flex items-center justify-center mb-2">
                   <QrCode className="h-16 w-16 text-muted-foreground/30" />
                 </div>
-                <p className="text-xs text-muted-foreground text-center">Scan QR · MDR 0.7% ({fmt(t.mdrAmount)}) akan dikurangi</p>
+                <p className="text-xs text-muted-foreground text-center">Pelanggan bayar {fmt(t.total)} · MDR 0.7% ditanggung toko</p>
               </div>
             )}
             <Button size="lg" className="w-full" disabled={(paymentMethod === "tunai" && cashAmt < t.total) || isPending} onClick={handleCheckout}>

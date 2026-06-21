@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { adminUpdateOrderStatus } from "@/actions/orders";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -75,6 +76,7 @@ export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("semua");
   const [selected, setSelected] = useState<Pesanan | null>(null);
+  const [isPending, startTx] = useTransition();
 
   const filtered = orders.filter((o) => {
     const matchSearch =
@@ -85,8 +87,11 @@ export default function OrdersPage() {
   });
 
   function updateStatus(id: string, status: StatusPesanan) {
+    // Optimistic update
     setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
     if (selected?.id === id) setSelected((s) => s ? { ...s, status } : null);
+    // Persist to DB (non-blocking; optimistic already applied)
+    startTx(() => { adminUpdateOrderStatus(id, status); });
   }
 
   const counts = {

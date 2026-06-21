@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Ticket, Plus, Pencil, Trash2, Layers, Truck, Clock4, Percent, Tag, Info, Loader2, CheckCircle2 } from "lucide-react";
+import { Ticket, Plus, Pencil, Trash2, Layers, Truck, Clock4, Tag, Info, Loader2, CheckCircle2 } from "lucide-react";
 import {
   upsertVoucher, deleteVoucher, toggleVoucher, saveShippingSubsidy, saveTieredDiscounts,
   type VoucherRow, type ShippingSubsidyConfig, type TieredDiscountConfig, type TierConfig,
@@ -75,7 +75,6 @@ function VoucherManager({ initial }: { initial: VoucherRow[] }) {
   const [editId, setEditId]     = useState<string | null>(null);
   const [form, setForm]         = useState<VForm>(emptyForm);
   const [errMsg, setErrMsg]     = useState<string | null>(null);
-  const [saved, setSaved]       = useState(false);
   const [isPending, startTx]    = useTransition();
 
   function openNew() { setEditId(null); setForm(emptyForm); setErrMsg(null); setOpen(true); }
@@ -410,7 +409,7 @@ function ClearanceED() {
       <CardContent>
         <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground flex gap-2">
           <Tag className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <p>Daftar batch mendekati ED tersedia di <a href="/admin/alarms" className="text-primary font-medium hover:underline">Pusat Alarm</a> dengan filter tipe "Mendekati ED". Dari sana, arahkan ke manajemen produk untuk menetapkan harga clearance.</p>
+          <p>Daftar batch mendekati ED tersedia di <a href="/admin/alarms" className="text-primary font-medium hover:underline">Pusat Alarm</a> dengan filter tipe &ldquo;Mendekati ED&rdquo;. Dari sana, arahkan ke manajemen produk untuk menetapkan harga clearance.</p>
         </div>
       </CardContent>
     </Card>

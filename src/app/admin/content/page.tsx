@@ -8,26 +8,19 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
-  FileText, LayoutTemplate, Save, Plus, Pencil, Trash2, Eye, CheckCircle2, FileEdit, Clock, Search,
+  FileText, LayoutTemplate, Save, Plus, Pencil, Trash2, Eye,
   Megaphone, MessageSquareQuote, HelpCircle, MousePointerClick, ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import {
   useContent, SECTION_META,
-  HeroContent, CtaContent, Testimoni, FaqItem, Artikel, ArtikelStatus,
+  HeroContent, CtaContent, Testimoni, FaqItem,
 } from "@/context/ContentContext";
-
-/* ── status artikel ── */
-const statusCfg: Record<ArtikelStatus, { label: string; cls: string; icon: typeof FileEdit }> = {
-  draft: { label: "Draft", cls: "bg-amber-100 text-amber-800 border-amber-200", icon: FileEdit },
-  terbit: { label: "Terbit", cls: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle2 },
-  terjadwal: { label: "Terjadwal", cls: "bg-blue-100 text-blue-800 border-blue-200", icon: Clock },
-};
+import { ArticlesManager } from "./_components/articles-manager";
 
 /** Tombol simpan per-section dengan indikator tersimpan */
 function SaveBar({ onSave, dirty }: { onSave: () => void; dirty: boolean }) {
@@ -308,156 +301,3 @@ function FaqEditor() {
   );
 }
 
-/* ═════════════ Articles manager ═════════════ */
-function ArticlesManager() {
-  const { content, updateSection } = useContent();
-  const articles = content.articles;
-  const setArticles = (next: Artikel[]) => updateSection("articles", next);
-
-  const [filter, setFilter] = useState<"semua" | ArtikelStatus>("semua");
-  const [search, setSearch] = useState("");
-  const [open, setOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const emptyArtikel: Omit<Artikel, "id"> = { title: "", category: "Edukasi", status: "draft", date: new Date().toISOString().slice(0, 10), excerpt: "", body: "" };
-  const [form, setForm] = useState<Omit<Artikel, "id">>(emptyArtikel);
-
-  const counts = {
-    semua: articles.length,
-    draft: articles.filter((a) => a.status === "draft").length,
-    terbit: articles.filter((a) => a.status === "terbit").length,
-    terjadwal: articles.filter((a) => a.status === "terjadwal").length,
-  };
-
-  const filtered = articles.filter((a) => {
-    const okStatus = filter === "semua" || a.status === filter;
-    const okSearch = a.title.toLowerCase().includes(search.toLowerCase());
-    return okStatus && okSearch;
-  });
-
-  function openNew() {
-    setEditId(null);
-    setForm(emptyArtikel);
-    setOpen(true);
-  }
-  function openEdit(a: Artikel) {
-    setEditId(a.id);
-    setForm({ title: a.title, category: a.category, status: a.status, date: a.date, excerpt: a.excerpt, body: a.body });
-    setOpen(true);
-  }
-  function save(asStatus?: ArtikelStatus) {
-    const data = asStatus ? { ...form, status: asStatus } : form;
-    if (!data.title) return;
-    if (editId) setArticles(articles.map((a) => (a.id === editId ? { ...data, id: editId } : a)));
-    else setArticles([{ ...data, id: String(Date.now()) }, ...articles]);
-    setOpen(false);
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2 rounded-lg border border-primary/15 bg-primary/5 p-3 text-xs text-muted-foreground">
-        <Eye className="h-4 w-4 shrink-0 text-primary" />
-        <span>Artikel berstatus <strong className="text-foreground">Terbit</strong> otomatis tampil di halaman <Link href="/blog" target="_blank" className="text-primary underline underline-offset-2">/blog</Link>. Draft &amp; Terjadwal hanya terlihat di sini.</span>
-      </div>
-
-      {/* Filter chips */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {([
-            ["semua", "Semua"],
-            ["draft", "Draft"],
-            ["terbit", "Terbit"],
-            ["terjadwal", "Terjadwal"],
-          ] as const).map(([key, label]) => (
-            <button
-              key={key}
-              onClick={() => setFilter(key)}
-              className={`rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${filter === key ? "border-primary bg-primary text-primary-foreground" : "bg-card hover:bg-muted"}`}
-            >
-              {label} <span className={filter === key ? "opacity-80" : "text-muted-foreground"}>({counts[key]})</span>
-            </button>
-          ))}
-        </div>
-        <Button onClick={openNew} className="gap-2"><Plus className="h-4 w-4" /> Tulis Artikel</Button>
-      </div>
-
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input placeholder="Cari judul artikel..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
-      </div>
-
-      {/* Daftar artikel — card list (rapi di mobile & desktop) */}
-      <div className="space-y-2.5">
-        {filtered.length === 0 && (
-          <Card><CardContent className="py-10 text-center text-muted-foreground">Tidak ada artikel</CardContent></Card>
-        )}
-        {filtered.map((a) => {
-          const cfg = statusCfg[a.status];
-          return (
-            <Card key={a.id} className="py-0">
-              <CardContent className="flex flex-col gap-2 p-3.5 sm:flex-row sm:items-center sm:gap-4">
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium leading-snug line-clamp-1">{a.title}</p>
-                  <p className="text-xs text-muted-foreground line-clamp-1">{a.excerpt || "—"}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant="outline" className="text-[10px]">{a.category}</Badge>
-                  <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cfg.cls}`}>
-                    <cfg.icon className="h-3 w-3" /> {cfg.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground hidden sm:inline">{a.date}</span>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(a)} aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setArticles(articles.filter((x) => x.id !== a.id))} aria-label="Hapus"><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Editor dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editId ? "Edit Artikel" : "Tulis Artikel Baru"}</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-1">
-            <div className="grid gap-1.5">
-              <Label className="text-xs">Judul</Label>
-              <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Judul artikel..." />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label className="text-xs">Kategori</Label>
-                <Select value={form.category} onValueChange={(v) => { if (v) setForm((f) => ({ ...f, category: v })); }}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {["Edukasi", "Tips & Trik", "Regulasi", "Klinik", "Promo", "Bisnis"].map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label className="text-xs">Tanggal Terbit</Label>
-                <Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid gap-1.5">
-              <Label className="text-xs">Ringkasan / Excerpt</Label>
-              <Textarea rows={2} value={form.excerpt} onChange={(e) => setForm((f) => ({ ...f, excerpt: e.target.value }))} />
-            </div>
-            <div className="grid gap-1.5">
-              <Label className="text-xs">Isi Artikel</Label>
-              <Textarea rows={6} placeholder="Tulis isi artikel di sini..." value={form.body} onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))} />
-            </div>
-          </div>
-          <Separator />
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button variant="outline" onClick={() => save("draft")} disabled={!form.title} className="gap-2">
-              <FileEdit className="h-4 w-4" /> Simpan sebagai Draft
-            </Button>
-            <Button onClick={() => save("terbit")} disabled={!form.title} className="gap-2">
-              <CheckCircle2 className="h-4 w-4" /> Terbitkan
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}

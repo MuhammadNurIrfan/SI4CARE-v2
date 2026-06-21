@@ -1,8 +1,11 @@
 "use server";
 
-import { eq, and, desc, sql, inArray } from "drizzle-orm";
+import { eq, desc, sql, inArray } from "drizzle-orm";
+import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { outboundTransactions, outboundItems } from "@/lib/db/schema";
+import { requireAdmin } from "@/lib/server-auth";
+import { logAudit } from "@/lib/audit";
 
 export type MpTrxStatus = "pending" | "dana_masuk" | "selesai";
 
@@ -108,11 +111,23 @@ export async function getMarketplaceTxs(filters?: {
     .filter(Boolean) as MpTrxRow[];
 }
 
+const settlementSchema = z.object({
+  txId: z.string().min(1),
+  settledAmount: z.number().min(0).nullable(),
+  newUiStatus: z.enum(["pending", "dana_masuk", "selesai"]),
+});
+
 export async function validateSettlement(
   txId: string,
   settledAmount: number | null,
   newUiStatus: MpTrxStatus,
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await requireAdmin().catch(() => null);
+  if (!session) return { ok: false, error: "Akses ditolak" };
+
+  const parsed = settlementSchema.safeParse({ txId, settledAmount, newUiStatus });
+  if (!parsed.success) return { ok: false, error: "Input tidak valid" };
+
   let dbStatus: "completed" | "pending_settlement" | "cancelled" = "pending_settlement";
   let settledAt: Date | null = null;
 
@@ -134,6 +149,10 @@ export async function validateSettlement(
       settledAt: settledAt ?? undefined,
     })
     .where(eq(outboundTransactions.id, txId));
+
+  await logAudit(session.user.id, "SETTLEMENT_VALIDATED", "outbound_transactions", txId, {
+    newStatus: newUiStatus, settledAmount,
+  });
 
   return { ok: true };
 }

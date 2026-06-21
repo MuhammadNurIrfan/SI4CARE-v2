@@ -48,7 +48,6 @@ export const SECTION_META = [
   { key: "products", label: "Produk Unggulan", desc: "Carousel produk terlaris" },
   { key: "quality", label: "Komitmen Kualitas", desc: "Band lifestyle + statistik" },
   { key: "testimonials", label: "Testimonial", desc: "Carousel ulasan pelanggan" },
-  { key: "articles", label: "Artikel", desc: "3 artikel terbaru" },
   { key: "faq", label: "FAQ", desc: "Pertanyaan umum" },
   { key: "cta", label: "CTA Penutup", desc: "Ajakan belanja terakhir" },
 ] as const;
@@ -59,7 +58,6 @@ export type SiteContent = {
   testimonials: Testimoni[];
   faq: FaqItem[];
   cta: CtaContent;
-  articles: Artikel[];
 };
 
 /* ── Konten default (sesuai tampilan saat ini) ── */
@@ -96,13 +94,6 @@ const DEFAULT_CONTENT: SiteContent = {
     tombolUtama: "Belanja Sekarang",
     tombolSekunder: "Konsultasi Gratis",
   },
-  articles: [
-    { id: "1", title: "Cara Memilih Tensimeter Digital yang Tepat untuk Rumah", category: "Edukasi", status: "terbit", date: "2026-05-28", excerpt: "Panduan memilih tensimeter akurat untuk pemakaian di rumah.", body: "" },
-    { id: "2", title: "5 Alat Kesehatan Wajib Ada di Setiap Rumah Tangga", category: "Tips & Trik", status: "terbit", date: "2026-05-20", excerpt: "Investasi alat kesehatan dasar untuk respons cepat darurat.", body: "" },
-    { id: "3", title: "Memahami Regulasi BPOM untuk Alat Kesehatan", category: "Regulasi", status: "draft", date: "2026-06-04", excerpt: "Rangkuman aturan distribusi alkes di Indonesia.", body: "" },
-    { id: "4", title: "Checklist Perlengkapan Medis Dasar untuk Klinik Pratama", category: "Klinik", status: "terbit", date: "2026-06-05", excerpt: "Daftar alat diagnostik & habis pakai wajib untuk klinik.", body: "" },
-    { id: "5", title: "Promo Kemerdekaan: Diskon Alkes hingga 25%", category: "Promo", status: "terjadwal", date: "2026-08-10", excerpt: "Artikel kampanye yang dijadwalkan terbit otomatis.", body: "" },
-  ],
 };
 
 const STORAGE_KEY = "si4care_content_v1";

@@ -1,11 +1,19 @@
 "use server";
 
 import { eq, desc, and } from "drizzle-orm";
+import { z } from "zod/v4";
 import { db } from "@/lib/db";
 import { returns, orders, user } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
+import { requireAdmin } from "@/lib/server-auth";
+
+const submitReturnSchema = z.object({
+  orderId: z.string().min(1).max(36),
+  reason: z.enum(["rusak", "tidak_sesuai", "kurang", "expired", "lainnya"]),
+  detail: z.string().min(5).max(1000),
+});
 
 export type ReturnStatus = "pending" | "inspeksi" | "layak_jual" | "write_off" | "ditolak";
 export type ReturnReason = "rusak" | "tidak_sesuai" | "kurang" | "expired" | "lainnya";
@@ -64,11 +72,14 @@ export async function submitReturn(input: {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session) return { ok: false, error: "Belum login" };
 
-  // Pastikan order milik user ini dan berstatus delivered
+  const parsed = submitReturnSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Input tidak valid" };
+
+  // IDOR: pastikan order milik user ini dan berstatus delivered
   const [order] = await db
     .select({ id: orders.id, userId: orders.userId, status: orders.status })
     .from(orders)
-    .where(and(eq(orders.id, input.orderId), eq(orders.userId, session.user.id)))
+    .where(and(eq(orders.id, parsed.data.orderId), eq(orders.userId, session.user.id)))
     .limit(1);
 
   if (!order) return { ok: false, error: "Pesanan tidak ditemukan" };
@@ -76,10 +87,10 @@ export async function submitReturn(input: {
 
   await db.insert(returns).values({
     id: crypto.randomUUID(),
-    orderId: input.orderId,
+    orderId: parsed.data.orderId,
     userId: session.user.id,
-    reason: input.reason,
-    detail: input.detail,
+    reason: parsed.data.reason,
+    detail: parsed.data.detail,
     photos: [],
     status: "pending",
   });
@@ -105,6 +116,7 @@ export async function getMyReturns(): Promise<ReturnRow[]> {
 // ─── Admin: semua retur ───────────────────────────────────────────────────────
 
 export async function getAdminReturns(): Promise<ReturnRow[]> {
+  await requireAdmin();
   const rows = await db
     .select({
       r: returns,
@@ -120,13 +132,16 @@ export async function getAdminReturns(): Promise<ReturnRow[]> {
   }));
 }
 
+const VALID_RETURN_STATUSES: ReturnStatus[] = ["pending", "inspeksi", "layak_jual", "write_off", "ditolak"];
+
 export async function updateReturnStatus(
   id: string,
   status: ReturnStatus,
   inspectionNotes?: string,
 ): Promise<{ ok: boolean }> {
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await requireAdmin().catch(() => null);
   if (!session) return { ok: false };
+  if (!VALID_RETURN_STATUSES.includes(status)) return { ok: false };
 
   await db
     .update(returns)

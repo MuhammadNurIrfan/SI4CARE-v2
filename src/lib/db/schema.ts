@@ -157,6 +157,7 @@ export const cartItems = mysqlTable(
 
 export const orders = mysqlTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey(),
+  branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   userId: varchar("user_id", { length: 36 }).references(() => user.id, {
     onDelete: "set null",
   }),
@@ -220,6 +221,7 @@ export const orderItems = mysqlTable("order_items", {
 
 export const outboundTransactions = mysqlTable("outbound_transactions", {
   id: varchar("id", { length: 36 }).primaryKey(),
+  branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   channel: mysqlEnum("channel", ["pos", "marketplace"]).notNull(),
   refNumber: varchar("ref_number", { length: 100 }).notNull(),
   // Marketplace-only
@@ -279,6 +281,7 @@ export const outboundItems = mysqlTable("outbound_items", {
 
 export const ledgerEntries = mysqlTable("ledger_entries", {
   id: varchar("id", { length: 36 }).primaryKey(),
+  branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   entryDate: date("entry_date", { mode: "string" }).notNull(),
   channel: mysqlEnum("channel", ["pos", "web", "marketplace"]).notNull(),
   referenceId: varchar("reference_id", { length: 36 }).notNull(),
@@ -298,6 +301,67 @@ export const appSettings = mysqlTable("app_settings", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
+});
+
+// ─── Cabang / Branch ─────────────────────────────────────────────────────────
+
+export const branches = mysqlTable("branches", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  address: text("address"),
+  phone: varchar("phone", { length: 30 }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Artikel / Blog ───────────────────────────────────────────────────────────
+
+export const articles = mysqlTable("articles", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  slug: varchar("slug", { length: 200 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  category: varchar("category", { length: 100 }).default("Edukasi"),
+  excerpt: text("excerpt"),
+  body: text("body"),
+  coverImage: varchar("cover_image", { length: 500 }),
+  metaTitle: varchar("meta_title", { length: 255 }),
+  metaDescription: text("meta_description"),
+  schemaType: varchar("schema_type", { length: 50 }).default("Article"),
+  status: mysqlEnum("status", ["draft", "terbit", "terjadwal"]).default("draft").notNull(),
+  publishedAt: timestamp("published_at"),
+  authorId: varchar("author_id", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+});
+
+// ─── Stock Opname ─────────────────────────────────────────────────────────────
+
+export const stockOpnameSessions = mysqlTable("stock_opname_sessions", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  sessionNo: varchar("session_no", { length: 50 }).notNull().unique(),
+  branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
+  conductedBy: varchar("conducted_by", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
+  status: mysqlEnum("status", ["open", "selesai"]).default("open").notNull(),
+  notes: text("notes"),
+  conductedAt: timestamp("conducted_at").defaultNow().notNull(),
+  closedAt: timestamp("closed_at"),
+});
+
+export const stockOpnameItems = mysqlTable("stock_opname_items", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  sessionId: varchar("session_id", { length: 36 })
+    .notNull()
+    .references(() => stockOpnameSessions.id, { onDelete: "cascade" }),
+  variantId: varchar("variant_id", { length: 36 }).references(() => variants.id, { onDelete: "set null" }),
+  productName: varchar("product_name", { length: 255 }).notNull(),
+  sku: varchar("sku", { length: 100 }).notNull(),
+  barcode: varchar("barcode", { length: 100 }),
+  lokasi: varchar("lokasi", { length: 100 }),
+  systemStock: int("system_stock").default(0).notNull(),
+  physicalStock: int("physical_stock"),
+  adjustmentDelta: int("adjustment_delta"),
+  hpp: decimal("hpp", { precision: 15, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
 });
 
 // ─── Retur pelanggan ──────────────────────────────────────────────────────────
@@ -384,4 +448,34 @@ export const returnsRelations = relations(returns, ({ one }) => ({
   order: one(orders, { fields: [returns.orderId], references: [orders.id] }),
   user: one(user, { fields: [returns.userId], references: [user.id] }),
   admin: one(user, { fields: [returns.adminId], references: [user.id] }),
+}));
+
+export const articlesRelations = relations(articles, ({ one }) => ({
+  author: one(user, { fields: [articles.authorId], references: [user.id] }),
+}));
+
+export const stockOpnameSessionsRelations = relations(stockOpnameSessions, ({ one, many }) => ({
+  conductedByUser: one(user, { fields: [stockOpnameSessions.conductedBy], references: [user.id] }),
+  items: many(stockOpnameItems),
+}));
+
+export const stockOpnameItemsRelations = relations(stockOpnameItems, ({ one }) => ({
+  session: one(stockOpnameSessions, { fields: [stockOpnameItems.sessionId], references: [stockOpnameSessions.id] }),
+  variant: one(variants, { fields: [stockOpnameItems.variantId], references: [variants.id] }),
+}));
+
+// ─── Audit Log ────────────────────────────────────────────────────────────────
+
+export const auditLogs = mysqlTable("audit_logs", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  userId: varchar("user_id", { length: 36 }),
+  action: varchar("action", { length: 100 }).notNull(),
+  entityType: varchar("entity_type", { length: 50 }),
+  entityId: varchar("entity_id", { length: 100 }),
+  detail: json("detail"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(user, { fields: [auditLogs.userId], references: [user.id] }),
 }));

@@ -4,6 +4,7 @@ import { eq, and, gte, lte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { vouchers } from "@/lib/db/schema";
 import crypto from "crypto";
+import { requireAdmin } from "@/lib/server-auth";
 
 // ─── Tipe publik ──────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ export async function incrementVoucherUsage(voucherId: string) {
 // ─── Admin CRUD ───────────────────────────────────────────────────────────────
 
 export async function getVouchers(): Promise<VoucherRow[]> {
+  await requireAdmin();
   const rows = await db.select().from(vouchers).orderBy(vouchers.createdAt);
   return rows.map((r) => ({
     id: r.id,
@@ -109,6 +111,7 @@ export type UpsertVoucherInput = {
 };
 
 export async function upsertVoucher(input: UpsertVoucherInput): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
   const data = {
     code: input.code.trim().toUpperCase(),
     type: input.type,
@@ -138,10 +141,12 @@ export async function upsertVoucher(input: UpsertVoucherInput): Promise<{ ok: bo
 }
 
 export async function deleteVoucher(id: string) {
+  await requireAdmin();
   await db.delete(vouchers).where(eq(vouchers.id, id));
 }
 
 export async function toggleVoucher(id: string, isActive: boolean) {
+  await requireAdmin();
   await db.update(vouchers).set({ isActive }).where(eq(vouchers.id, id));
 }
 

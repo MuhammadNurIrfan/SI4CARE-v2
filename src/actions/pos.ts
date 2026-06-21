@@ -15,6 +15,7 @@ import {
   type MpItem,
   type CustomFee,
 } from "@/lib/pos-calc";
+import { logAudit } from "@/lib/audit";
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -172,6 +173,16 @@ export async function savePosTransaction(
     };
     const itemDisc = calcLineDiscount(cartItem);
     const avgHpp = result.totalCogs / item.qty;
+
+    // Anti-rugi: tolak transaksi bila harga jual di bawah HPP yang dikonsumsi
+    if (item.price < avgHpp) {
+      await logAudit(session.user.id, "PRICE_BELOW_HPP", "variants", item.variantId, {
+        productName: item.name, price: item.price, hpp: Math.round(avgHpp),
+      });
+      throw new Error(
+        `Anti-rugi: harga ${item.name} (Rp${item.price.toLocaleString("id")}) di bawah HPP (Rp${Math.round(avgHpp).toLocaleString("id")}). Sesuaikan harga atau hubungi supervisor.`,
+      );
+    }
 
     itemAllocations.push({
       variantId: item.variantId,

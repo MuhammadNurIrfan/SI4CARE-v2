@@ -1,0 +1,81 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Setiap hari jam 02:00 WIB (UTC+7) = 19:00 UTC
+    - cron: "0 19 * * *"
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Alasan backup manual"
+        required: false
+        default: "manual trigger"
+
+jobs:
+  backup:
+    name: Backup MySQL Database
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+      MYSQL_PORT: ${{ secrets.MYSQL_PORT || '3306' }}
+      MYSQL_USER: ${{ secrets.MYSQL_USER }}
+      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE || 'db_toko_si4care' }}
+
+    steps:
+      - name: Install MySQL client
+        run: sudo apt-get install -y mysql-client
+
+      - name: Test DB connection
+        run: |
+          mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" \
+            -e "SELECT 'Connection OK' AS status;" "$MYSQL_DATABASE"
+
+      - name: Create backup
+        run: |
+          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          FILENAME="backup_${MYSQL_DATABASE}_${TIMESTAMP}.sql.gz"
+          echo "BACKUP_FILE=$FILENAME" >> $GITHUB_ENV
+
+          mysqldump \
+            -h "$MYSQL_HOST" \
+            -P "$MYSQL_PORT" \
+            -u "$MYSQL_USER" \
+            -p"$MYSQL_PASSWORD" \
+            --single-transaction \
+            --routines \
+            --triggers \
+            --hex-blob \
+            "$MYSQL_DATABASE" | gzip > "$FILENAME"
+
+          echo "Backup size: $(du -sh $FILENAME | cut -f1)"
+
+      - name: Upload backup as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.BACKUP_FILE }}
+          path: ${{ env.BACKUP_FILE }}
+          # Retain artifacts for 30 days
+          retention-days: 30
+
+      # Opsional: upload ke Backblaze B2 atau S3-compatible storage
+      # Uncomment dan isi B2_BUCKET_NAME + B2_APPLICATION_KEY_ID + B2_APPLICATION_KEY secret
+      # - name: Upload to B2 Cloud Storage
+      #   uses: jakejarvis/s3-sync-action@master
+      #   with:
+      #     args: --acl private
+      #   env:
+      #     AWS_S3_BUCKET: ${{ secrets.B2_BUCKET_NAME }}
+      #     AWS_ACCESS_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+      #     AWS_SECRET_ACCESS_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+      #     AWS_REGION: "us-east-005"
+      #     AWS_S3_ENDPOINT: https://s3.us-east-005.backblazeb2.com
+      #     SOURCE_DIR: "."
+      #     DEST_DIR: "backups/si4care/"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Backup GAGAL pada $(date). Periksa koneksi DB dan credentials secrets."

@@ -11,6 +11,7 @@ import { createOrderSchema, type CreateOrderInput } from "@/lib/validations/orde
 import { validateVoucher } from "./vouchers";
 import { calcDiscount } from "@/lib/utils/discount";
 import { allocateStock } from "@/lib/utils/stockAllocation";
+import { logAudit } from "@/lib/audit";
 
 const SERVICE_FEE = 4500;
 const PPN_RATE = 0.12;
@@ -98,6 +99,21 @@ export async function createOrder(input: CreateOrderInput): Promise<CreateOrderR
         error: `Stok ${item.productName} tidak cukup (kurang ${result.shortfall} unit)`,
       };
     }
+
+    // Anti-rugi: tolak bila harga jual di bawah HPP yang akan dikonsumsi
+    const avgHpp = result.totalCogs / item.quantity;
+    if (item.unitPrice < avgHpp) {
+      await logAudit(userId, "PRICE_BELOW_HPP", "order_items", item.variantId, {
+        productName: item.productName,
+        unitPrice: item.unitPrice,
+        avgHpp: Math.round(avgHpp),
+      });
+      return {
+        ok: false,
+        error: `Harga jual ${item.productName} (Rp${item.unitPrice.toLocaleString("id")}) di bawah HPP (Rp${Math.round(avgHpp).toLocaleString("id")}). Hubungi admin.`,
+      };
+    }
+
     allocationMap[item.variantId] = result.allocations.map((a) => ({
       batchId: a.batchId,
       qty: a.quantity,
@@ -271,4 +287,43 @@ export async function getOrderDetail(orderId: string) {
     .where(eq(orderItems.orderId, orderId));
 
   return { ...order, items };
+}
+
+// ─── Admin ────────────────────────────────────────────────────────────────────
+
+// DB enum values for orders.status
+const VALID_ORDER_STATUSES = [
+  "pending_payment", "paid", "processing", "shipped", "delivered", "cancelled",
+] as const;
+type DbOrderStatus = (typeof VALID_ORDER_STATUSES)[number];
+
+export async function adminUpdateOrderStatus(
+  orderId: string,
+  newStatus: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) return { ok: false, error: "Tidak ada sesi aktif" };
+  if (!["admin", "super_admin"].includes(session.user.role as string)) {
+    return { ok: false, error: "Akses ditolak" };
+  }
+  if (!(VALID_ORDER_STATUSES as readonly string[]).includes(newStatus)) {
+    return { ok: false, error: "Status tidak valid" };
+  }
+  const dbStatus = newStatus as DbOrderStatus;
+
+  const [prev] = await db
+    .select({ status: orders.status })
+    .from(orders)
+    .where(eq(orders.id, orderId))
+    .limit(1);
+  if (!prev) return { ok: false, error: "Pesanan tidak ditemukan" };
+
+  await db.update(orders).set({ status: dbStatus }).where(eq(orders.id, orderId));
+
+  await logAudit(session.user.id, "ORDER_STATUS_CHANGED", "orders", orderId, {
+    from: prev.status,
+    to: newStatus,
+  });
+
+  return { ok: true };
 }
