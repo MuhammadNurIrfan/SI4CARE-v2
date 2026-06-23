@@ -2,9 +2,9 @@
 
 import { headers } from "next/headers";
 import { randomUUID } from "crypto";
-import { eq, and, desc, inArray } from "drizzle-orm";
+import { eq, and, desc, inArray, like, or } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { orders, orderItems, addresses, vouchers, variants, batches } from "@/lib/db/schema";
+import { orders, orderItems, addresses, vouchers, variants, batches, user } from "@/lib/db/schema";
 import { auth } from "@/lib/auth";
 import { snap } from "@/lib/midtrans";
 import { createOrderSchema, type CreateOrderInput } from "@/lib/validations/order";
@@ -326,4 +326,125 @@ export async function adminUpdateOrderStatus(
   });
 
   return { ok: true };
+}
+
+// ─── Admin order list ─────────────────────────────────────────────────────────
+
+export type AdminOrderRow = {
+  id: string;
+  midtransOrderId: string | null;
+  status: DbOrderStatus;
+  totalAmount: string;
+  subtotal: string;
+  discountAmount: string;
+  shippingCost: string;
+  ppn: string;
+  serviceFee: string;
+  createdAt: string; // ISO string — safe to pass client→server
+  customerName: string;
+  customerEmail: string;
+  courier: string | null;
+  courierService: string | null;
+  paymentMethod: string | null;
+  paidAt: string | null;
+  snapAddress: { name: string; phone: string; address: string; city: string };
+  itemCount: number;
+  firstItemName: string;
+};
+
+export async function adminGetOrders(filter?: {
+  status?: DbOrderStatus;
+  search?: string;
+}): Promise<AdminOrderRow[]> {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) throw new Error("Tidak ada sesi aktif");
+  if (!["admin", "super_admin"].includes(session.user.role as string)) {
+    throw new Error("Akses ditolak");
+  }
+
+  // Build where clause
+  const conditions = [];
+  if (filter?.status) {
+    conditions.push(eq(orders.status, filter.status));
+  }
+  if (filter?.search) {
+    const term = `%${filter.search}%`;
+    conditions.push(
+      or(
+        like(orders.midtransOrderId, term),
+        like(orders.id, term),
+      ),
+    );
+  }
+
+  const orderRows = await db
+    .select({
+      id: orders.id,
+      midtransOrderId: orders.midtransOrderId,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      subtotal: orders.subtotal,
+      discountAmount: orders.discountAmount,
+      shippingCost: orders.shippingCost,
+      ppn: orders.ppn,
+      serviceFee: orders.serviceFee,
+      createdAt: orders.createdAt,
+      courier: orders.courier,
+      courierService: orders.courierService,
+      paymentMethod: orders.paymentMethod,
+      paidAt: orders.paidAt,
+      snapAddress: orders.snapAddress,
+      userId: orders.userId,
+      // LEFT JOIN user — bisa null jika akun dihapus
+      userName: user.name,
+      userEmail: user.email,
+    })
+    .from(orders)
+    .leftJoin(user, eq(orders.userId, user.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .orderBy(desc(orders.createdAt))
+    .limit(500); // hard cap — tambah pagination bila perlu
+
+  if (orderRows.length === 0) return [];
+
+  const orderIds = orderRows.map((o) => o.id);
+
+  // Ambil item count + nama item pertama per order (MariaDB 10.4: no LATERAL JOIN)
+  const itemRows = await db
+    .select({
+      orderId: orderItems.orderId,
+      productName: orderItems.productName,
+    })
+    .from(orderItems)
+    .where(inArray(orderItems.orderId, orderIds));
+
+  const itemMap: Record<string, { count: number; firstName: string }> = {};
+  for (const row of itemRows) {
+    if (!itemMap[row.orderId]) {
+      itemMap[row.orderId] = { count: 0, firstName: row.productName };
+    }
+    itemMap[row.orderId].count += 1;
+  }
+
+  return orderRows.map((o) => ({
+    id: o.id,
+    midtransOrderId: o.midtransOrderId,
+    status: o.status as DbOrderStatus,
+    totalAmount: o.totalAmount,
+    subtotal: o.subtotal,
+    discountAmount: o.discountAmount,
+    shippingCost: o.shippingCost,
+    ppn: o.ppn,
+    serviceFee: o.serviceFee,
+    createdAt: o.createdAt.toISOString(),
+    customerName: o.snapAddress?.name ?? o.userName ?? "—",
+    customerEmail: o.userEmail ?? "—",
+    courier: o.courier,
+    courierService: o.courierService,
+    paymentMethod: o.paymentMethod,
+    paidAt: o.paidAt?.toISOString() ?? null,
+    snapAddress: o.snapAddress,
+    itemCount: itemMap[o.id]?.count ?? 0,
+    firstItemName: itemMap[o.id]?.firstName ?? "—",
+  }));
 }
