@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createHash } from "crypto";
-import { eq } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, orderItems, batches } from "@/lib/db/schema";
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Verifikasi signature — kritis untuk keamanan
+  // Verifikasi signature SHA-512 — tolak jika tidak cocok
   if (!verifySignature(body)) {
     return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
   }
@@ -62,7 +62,6 @@ export async function POST(req: NextRequest) {
   }
 
   if (isPaymentSuccess(body)) {
-    // Deduct stok per order item menggunakan alokasi FIFO/FEFO yang sudah dicatat
     const items = await db
       .select()
       .from(orderItems)
@@ -76,9 +75,12 @@ export async function POST(req: NextRequest) {
       }[];
 
       for (const alloc of allocations) {
-        await db.execute(
-          `UPDATE batches SET remaining = remaining - ${alloc.qty} WHERE id = '${alloc.batchId}' AND remaining >= ${alloc.qty}` as unknown as Parameters<typeof db.execute>[0],
-        );
+        // Drizzle sql`` tag — nilai alloc.qty dan alloc.batchId di-bind sebagai
+        // prepared-statement parameter, bukan diinterpolasi ke string SQL.
+        await db
+          .update(batches)
+          .set({ remaining: sql`${batches.remaining} - ${alloc.qty}` })
+          .where(and(eq(batches.id, alloc.batchId), gte(batches.remaining, alloc.qty)));
       }
     }
 

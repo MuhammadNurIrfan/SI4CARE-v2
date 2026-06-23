@@ -79,7 +79,13 @@ export default async function BlogPostPage({ params }: { params: Promise<Params>
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          // Escape </script> dan karakter HTML khusus agar tidak bisa break keluar dari <script> tag
+          __html: JSON.stringify(jsonLd)
+            .replace(/</g, "\\u003c")
+            .replace(/>/g, "\\u003e")
+            .replace(/&/g, "\\u0026"),
+        }}
       />
 
       <div className="pt-20">

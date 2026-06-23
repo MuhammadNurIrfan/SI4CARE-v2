@@ -62,6 +62,7 @@ export function CheckoutClient({ addresses }: Props) {
   const [shippingOptions, setShippingOptions] = useState<ShippingOption[]>([]);
   const [selectedShipping, setSelectedShipping] = useState<ShippingOption | null>(null);
   const [loadingShipping, setLoadingShipping] = useState(false);
+  const [shippingFallback, setShippingFallback] = useState(false);
 
   const [voucherInput, setVoucherInput] = useState("");
   const [voucher, setVoucher] = useState<VoucherState | null>(null);
@@ -82,17 +83,22 @@ export function CheckoutClient({ addresses }: Props) {
   const loadShipping = useCallback(async (city: string) => {
     setLoadingShipping(true);
     setSelectedShipping(null);
+    setShippingFallback(false);
     try {
-      const res = await fetch(`/api/shipping/cost?destination=${encodeURIComponent(city)}&weight=1000`);
-      const data = (await res.json()) as { options: ShippingOption[] };
+      const totalWeight = items.reduce((s, i) => s + (i.quantity * 500), 0) || 1000;
+      const res = await fetch(
+        `/api/shipping/cost?destination=${encodeURIComponent(city.toUpperCase())}&weight=${totalWeight}`,
+      );
+      const data = (await res.json()) as { options: ShippingOption[]; fallback?: boolean };
       setShippingOptions(data.options ?? []);
+      setShippingFallback(data.fallback === true);
       if (data.options?.length) setSelectedShipping(data.options[0]);
     } catch {
       setShippingOptions([]);
     } finally {
       setLoadingShipping(false);
     }
-  }, []);
+  }, [items]);
 
   useEffect(() => {
     if (selectedAddress?.city) {
@@ -250,6 +256,13 @@ export function CheckoutClient({ addresses }: Props) {
                   {selectedAddress ? "Gagal memuat ongkir — coba pilih alamat lain." : "Pilih alamat terlebih dahulu."}
                 </p>
               ) : (
+                <>
+                  {shippingFallback && (
+                    <div className="flex items-start gap-2 mb-3 p-2.5 rounded-md bg-amber-50 border border-amber-200 text-xs text-amber-700">
+                      <AlertCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Tarif estimasi — koneksi ke layanan ongkir sedang tidak tersedia. Harga final dikonfirmasi setelah pesanan diproses.</span>
+                    </div>
+                  )}
                 <RadioGroup
                   value={selectedShipping ? `${selectedShipping.courier}-${selectedShipping.service}` : ""}
                   onValueChange={(v) => {
@@ -278,6 +291,7 @@ export function CheckoutClient({ addresses }: Props) {
                     );
                   })}
                 </RadioGroup>
+                </>
               )}
             </CardContent>
           </Card>
