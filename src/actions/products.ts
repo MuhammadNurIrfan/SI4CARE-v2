@@ -36,6 +36,7 @@ export type VariantRow = {
   productName: string;
   productBrand: string | null;
   productIsActive: boolean;
+  productImageUrl: string | null;
   categoryId: string | null;
   categoryName: string | null;
   totalStock: number;
@@ -57,6 +58,7 @@ export async function getVariantsWithProduct(): Promise<VariantRow[]> {
       productName: products.name,
       productBrand: products.brand,
       productIsActive: products.isActive,
+      productImageUrl: products.imageUrl,
       categoryId: products.categoryId,
       categoryName: categories.name,
       totalStock: sql<number>`COALESCE(SUM(${batches.remaining}), 0)`,
@@ -100,6 +102,7 @@ export async function createProductWithVariant(
     name: pData.name,
     brand: pData.brand ?? null,
     description: pData.description ?? null,
+    imageUrl: pData.imageUrl ?? null,
     isActive: pData.isActive,
   });
 
@@ -129,6 +132,7 @@ export async function updateProduct(productId: string, input: ProductInput) {
       name: data.name,
       brand: data.brand ?? null,
       description: data.description ?? null,
+      imageUrl: data.imageUrl ?? null,
       isActive: data.isActive,
       updatedAt: new Date(),
     })
@@ -166,6 +170,7 @@ export type ShopProduct = {
   price: number;
   category: string;
   categoryId: string | null;
+  imageUrl: string | null;
   stock: number;
   art?: string;
 };
@@ -179,6 +184,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
       sku: variants.sku,
       name: products.name,
       brand: products.brand,
+      imageUrl: products.imageUrl,
       activePrice: variants.activePrice,
       categoryId: products.categoryId,
       categoryName: categories.name,
@@ -198,6 +204,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
     sku: r.sku,
     name: r.name,
     brand: r.brand,
+    imageUrl: r.imageUrl ?? null,
     price: Number(r.activePrice),
     category: r.categoryName ?? "Umum",
     categoryId: r.categoryId,

@@ -183,7 +183,12 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - **Alarm real-time** (`admin/alarms`): `src/actions/alarms.ts` — `getLiveAlarms()` dengan 4 blok query Drizzle (stok rendah via HAVING, mendekati ED ≤30 hari, batch kadaluarsa, margin tipis/negatif). Dismiss ephemeral di client-side `Set<string>`.
   - **Retur** (`account/returns` + `admin/returns`): `src/actions/returns.ts` — full CRUD. Halaman customer (form ajukan retur + riwayat). Halaman admin (`/admin/returns`) dengan tabel+card mobile + dialog proses karantina (pending→inspeksi→layak_jual/write_off/ditolak). Sidebar sidebar `app-sidebar.tsx` tambah menu Retur.
   - **FEFO**: sudah ada sejak Fase 1.2 (`variants.stockMode` enum + `stockAllocation.ts`) — tidak perlu perubahan.
-- [ ] Chat pelanggan↔admin (mulai polling sederhana; websocket belakangan)
+- [x] **Chat pelanggan↔admin** — selesai 2026-06-24:
+  - Tabel baru: `chat_threads` + `chat_messages` di `src/lib/db/schema.ts`.
+  - `src/actions/chat.ts` — `getOrCreateMyThread`, `sendMessage`, `getMessages`, `getThreadsForAdmin`, `closeThread`.
+  - `account/chat/page.tsx` → server component (ambil/buat thread + pesan awal) + `_components/chat-client.tsx` (polling 3 detik).
+  - `admin/messages/page.tsx` → server wrapper + `_components/messages-client.tsx` (thread list + chat + polling 3 detik + tombol Tutup thread).
+  - Migration SQL: `docs/sql/chat-migration.sql` — jalankan di XAMPP sebelum test.
 
 ### 7c. Eksternal & hardening
 - [ ] Pembayaran Midtrans (verifikasi callback signature!) · Ongkir RajaOngkir/Komerce + cache Redis 24 jam + fallback tabel ongkir cadangan
@@ -196,7 +201,19 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - **QRIS compliance**: Dropdown POS tidak lagi tampilkan "0.7% MDR" di nama metode (tidak boleh menyiratkan surcharge ke pelanggan). MDR row di summary berubah jadi "MDR X% (ditanggung toko)". Note di QR dialog: "Pelanggan bayar {total} · MDR 0.7% ditanggung toko". `SERVICE_FEE` di orders.ts sudah flat Rp4.500 untuk semua metode (tidak berubah).
   - **Migration**: `CREATE TABLE audit_logs` via XAMPP mysql (MariaDB 10.4).
 - [ ] Security pass lanjutan: output escaping, CSRF token, security headers/CSP (helmet/middleware), akun DB non-root least-privilege
-- [ ] Test: unit untuk logika harga/diskon/stok, e2e alur checkout & POS
+- [x] **Test: unit untuk logika harga/diskon/stok, e2e alur checkout & POS** — selesai 2026-06-24:
+  - Vitest v2 (`npm test`): 51 unit tests, 3 file, semua hijau.
+    - `src/lib/utils/__tests__/stockAllocation.test.ts` — 13 test: FIFO order, FEFO order, expired skip, shortfall, COGS calc, tie-breaker.
+    - `src/lib/__tests__/pos-calc.test.ts` — 26 test: `calcLineDiscount` (pct/rp/cap), `calcCartTotals` (disc item+cart, PPN 12%, MDR semua metode, margin), `calcMarketplaceNet` (komisi, ongkir, custom fees ±, isMinus/isTipis).
+    - `src/lib/utils/__tests__/discount.test.ts` — 12 test: fixed (capped), percent (rounded, maxDiscount, edge 0%).
+  - Playwright (`npm run test:e2e`): 3 spec file, browser Chromium+mobile.
+    - `tests/e2e/checkout.spec.ts` — produk dari DB, tambah ke keranjang, guest redirect login, form checkout, voucher SEHAT10.
+    - `tests/e2e/pos.spec.ts` — auth guard, katalog, klik → keranjang, scan barcode, tab marketplace.
+    - `tests/e2e/returns.spec.ts` — riwayat pesanan, form retur customer, admin orders+returns.
+  - **Prasyarat e2e**: `npm run dev` + XAMPP MySQL jalan. Akun yang dipakai (sudah ada di DB):
+    - Customer: `testing@gmail.com` / `testing123`
+    - Admin: `admin@si4care.com` / `Admin1234!`
+    - Super Admin: `superadmin@si4care.com` / `SuperAdmin1234!`
 - [ ] Foto produk: ganti ilustrasi SVG → `next/image` + storage (saat ini 0 pemakaian next/image — wajar karena belum ada foto asli)
 - [ ] Deploy hemat memori: `output: "standalone"` di next.config, VPS ≥1GB + swap, atau Vercel; cetak struk thermal ESC/POS + label barcode 33×15mm
 
@@ -213,6 +230,8 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
 
 ## Log Sesi
 
+- **2026-06-24 — Chat pelanggan↔admin selesai**: Tabel `chat_threads`+`chat_messages` di schema. Server actions `chat.ts` (getOrCreate, send, poll, adminList, close). UI customer (`account/chat`) + admin (`admin/messages`) di-wire ke DB dengan polling 3 detik. Migration SQL di `docs/sql/chat-migration.sql`. `npx tsc --noEmit` bersih.
+- **2026-06-24 — Tests selesai**: Vitest v2 setup (`vitest.config.mts`). 51 unit tests hijau: `stockAllocation.test.ts` (13), `pos-calc.test.ts` (26), `discount.test.ts` (12). Playwright setup (`playwright.config.ts`, `tests/e2e/`): 3 spec file (checkout, pos, returns). Scripts: `npm test`, `npm run test:e2e`. Prasyarat e2e: dev server + akun test di DB. `npx tsc --noEmit` bersih.
 - **2026-06-22 — Hardening selesai (paralel di semua slice)**: Audit log tabel + helper `logAudit()`. Anti-rugi di POS + online checkout (tolak jika harga < HPP). AuthZ: `requireAdmin()` ditambah ke marketplace-settlement, vouchers, returns admin, articles (semua sebelumnya tidak terproteksi). Validasi Zod: submitReturn, upsertArticle, validateSettlement. Shared helper `src/lib/server-auth.ts`. QRIS: MDR label diklasifikasikan sebagai biaya toko, tidak surcharge ke pelanggan. `adminUpdateOrderStatus()` server action + audit log. `npx tsc --noEmit` ✅ bersih.
 - **2026-06-22 — Fase 3 selesai (Stock Opname + Blog SEO + Backup + Multi-cabang)**: Stock opname berbasis DB (sesi+item, delta FIFO ke batches, riwayat sesi). `articles` tabel + `blog/[slug]` dengan `generateMetadata()` + JSON-LD schema.org. Admin CMS artikel → `_components/articles-manager.tsx` pakai server actions (bukan localStorage). ContentContext dibersihkan dari articles. Backup terjadwal via GitHub Actions (`02:00 WIB`) + `npm run db:backup` lokal. Multi-cabang MVP: tabel `branches` + `branch_id` di 4 tabel inti, default 'main'. Migration via XAMPP. `npx tsc --noEmit` bersih; lint bersih dari file baru.
 - **2026-06-22 — Fase 1.5 + Fase 2 selesai**: Laporan dari query DB (bukan hardcode). Barcode scan POS kasir-tab (exact-match Enter → addToCart, feedback 2.5s). Schema baru: `settled_amount`, `app_settings`, `returns` — dimigrasikan direct SQL via XAMPP mysql client (MariaDB 10.4 incompatible dengan `db:push`). Diskon/voucher CRUD + subsidi ongkir + diskon berjenjang persistent di `app_settings`. Marketplace settlement: status UI dari kolom existing. Alarm live: 4 Drizzle query (stok rendah, mendekati ED, kadaluarsa, margin tipis). Retur: tabel + server actions + UI pelanggan + admin (flow karantina 5-state). `npx tsc --noEmit` bersih; semua lint error dari file baru dibersihkan.

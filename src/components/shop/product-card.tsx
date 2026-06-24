@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ShoppingCart, Heart, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
@@ -13,6 +14,7 @@ export interface Product {
   variantId: string;   // UUID nyata dari DB — wajib untuk checkout
   name: string;
   price: number;
+  imageUrl?: string | null;
   originalPrice?: number;
   category: string;
   stock: number;
@@ -59,12 +61,21 @@ export function ProductCard({ product }: { product: Product }) {
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl sm:rounded-3xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
       <Link href={`/shop/${product.id}`} className="relative block">
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-accent to-secondary/60">
-          {categoryImage ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+          {product.imageUrl ? (
+            <Image
+              src={product.imageUrl}
+              alt={product.name}
+              fill
+              sizes="(max-width: 640px) 50vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : categoryImage ? (
+            <Image
               src={categoryImage}
               alt={product.name}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              fill
+              sizes="(max-width: 640px) 50vw, 25vw"
+              className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
             <>

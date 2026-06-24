@@ -66,6 +66,14 @@ const securityHeaders = [
   },
 ];
 
+// Domain R2/CDN untuk next/image — tambahkan setelah R2 dikonfigurasi
+const r2PublicUrl = process.env.R2_PUBLIC_URL ?? "";
+const r2Hostname = r2PublicUrl
+  ? (() => {
+      try { return new URL(r2PublicUrl).hostname; } catch { return ""; }
+    })()
+  : "";
+
 const nextConfig: NextConfig = {
   async headers() {
     return [
@@ -75,6 +83,19 @@ const nextConfig: NextConfig = {
         headers: securityHeaders,
       },
     ];
+  },
+
+  images: {
+    remotePatterns: [
+      // Cloudflare R2 public bucket (dikonfigurasi via R2_PUBLIC_URL)
+      ...(r2Hostname
+        ? [{ protocol: "https" as const, hostname: r2Hostname }]
+        : []),
+      // Fallback: izinkan semua HTTPS untuk development (batasi di production)
+      ...(process.env.NODE_ENV !== "production"
+        ? [{ protocol: "https" as const, hostname: "**" }]
+        : []),
+    ],
   },
 };
 

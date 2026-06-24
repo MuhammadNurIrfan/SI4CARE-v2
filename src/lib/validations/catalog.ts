@@ -12,6 +12,7 @@ export const productSchema = z.object({
   brand: z.string().max(100).optional().nullable(),
   description: z.string().optional().nullable(),
   categoryId: z.string().length(36).optional().nullable(),
+  imageUrl: z.string().max(500).optional().nullable(),
   isActive: z.boolean().default(true),
 });
 export type ProductInput = z.infer<typeof productSchema>;

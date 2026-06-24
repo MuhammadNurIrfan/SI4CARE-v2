@@ -67,6 +67,8 @@ export const products = mysqlTable("products", {
   name: varchar("name", { length: 255 }).notNull(),
   brand: varchar("brand", { length: 100 }),
   description: text("description"),
+  /** URL foto utama produk — /uploads/... (lokal) atau https://... (R2/S3). null = belum ada foto. */
+  imageUrl: varchar("image_url", { length: 500 }),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
@@ -384,6 +386,34 @@ export const returns = mysqlTable("returns", {
     .defaultNow()
     .$onUpdate(() => new Date())
     .notNull(),
+});
+
+// ─── Chat ────────────────────────────────────────────────────────────────────
+
+export const chatThreads = mysqlTable("chat_threads", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  customerId: varchar("customer_id", { length: 36 })
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  status: mysqlEnum("status", ["open", "closed"]).default("open").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at")
+    .defaultNow()
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
+export const chatMessages = mysqlTable("chat_messages", {
+  id: varchar("id", { length: 36 }).primaryKey(),
+  threadId: varchar("thread_id", { length: 36 })
+    .notNull()
+    .references(() => chatThreads.id, { onDelete: "cascade" }),
+  senderId: varchar("sender_id", { length: 36 })
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  isRead: boolean("is_read").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 // ─── Relasi ──────────────────────────────────────────────────────────────────

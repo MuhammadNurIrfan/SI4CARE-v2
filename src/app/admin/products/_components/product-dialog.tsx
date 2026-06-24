@@ -22,6 +22,7 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { Barcode128, QrSvg, generateBarcodeValue } from "@/components/barcode";
 import { createProductWithVariant, updateProduct, updateVariant } from "@/actions/products";
 import type { VariantRow } from "@/actions/products";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 type CategoryRow = { id: string; name: string };
 
@@ -37,6 +38,7 @@ type FormState = {
   productName: string;
   brand: string;
   categoryId: string;
+  imageUrl: string | null;
   isActive: boolean;
   sku: string;
   barcode: string;
@@ -49,6 +51,7 @@ const emptyForm: FormState = {
   productName: "",
   brand: "",
   categoryId: "",
+  imageUrl: null,
   isActive: true,
   sku: "",
   barcode: "",
@@ -65,6 +68,7 @@ export function ProductDialog({ open, onClose, editRow, categories, onSaved }: P
           productName: editRow.productName,
           brand: editRow.productBrand ?? "",
           categoryId: editRow.categoryId ?? "",
+          imageUrl: editRow.productImageUrl ?? null,
           isActive: editRow.productIsActive,
           sku: editRow.sku,
           barcode: editRow.barcode ?? "",
@@ -83,6 +87,7 @@ export function ProductDialog({ open, onClose, editRow, categories, onSaved }: P
         productName: row.productName,
         brand: row.productBrand ?? "",
         categoryId: row.categoryId ?? "",
+        imageUrl: row.productImageUrl ?? null,
         isActive: row.productIsActive,
         sku: row.sku,
         barcode: row.barcode ?? "",
@@ -122,6 +127,7 @@ export function ProductDialog({ open, onClose, editRow, categories, onSaved }: P
               name: form.productName,
               brand: form.brand || null,
               categoryId: form.categoryId || null,
+              imageUrl: form.imageUrl ?? null,
               isActive: form.isActive,
             }),
             updateVariant(editRow.variantId, {
@@ -139,6 +145,7 @@ export function ProductDialog({ open, onClose, editRow, categories, onSaved }: P
               name: form.productName,
               brand: form.brand || null,
               categoryId: form.categoryId || null,
+              imageUrl: form.imageUrl ?? null,
               isActive: form.isActive,
             },
             {
@@ -166,6 +173,14 @@ export function ProductDialog({ open, onClose, editRow, categories, onSaved }: P
         </DialogHeader>
         <div className="grid gap-4 py-2">
           {/* Nama + Brand */}
+          {/* Foto produk */}
+          <ImageUpload
+            value={form.imageUrl}
+            onChange={(url) => setForm((f) => ({ ...f, imageUrl: url }))}
+            folder="products"
+            label="Foto Produk"
+          />
+
           <div className="grid gap-1.5">
             <Label htmlFor="pnama">Nama Produk *</Label>
             <Input
