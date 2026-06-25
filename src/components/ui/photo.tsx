@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface PhotoProps {
@@ -21,6 +21,19 @@ interface PhotoProps {
  */
 export function Photo({ src, alt, className, fallbackClassName, priority = false }: PhotoProps) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Cegah race-condition hidrasi: gambar (terutama lokal/cache) sering selesai
+  // load SEBELUM React memasang handler onLoad, sehingga event onLoad tidak
+  // pernah terpicu dan gambar nyangkut di opacity-0. Saat mount, cek apakah
+  // gambar SUDAH selesai dan sinkronkan status secara manual.
+  useEffect(() => {
+    const img = imgRef.current;
+    if (!img) return;
+    if (img.complete) {
+      setStatus(img.naturalWidth > 0 ? "loaded" : "error");
+    }
+  }, []);
 
   return (
     <span className={cn("relative block overflow-hidden", className)}>
@@ -36,6 +49,7 @@ export function Photo({ src, alt, className, fallbackClassName, priority = false
       {status !== "error" && (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={imgRef}
           src={src}
           alt={alt}
           loading={priority ? "eager" : "lazy"}

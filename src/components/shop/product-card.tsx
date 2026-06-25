@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ShoppingCart, Heart, Star, Check } from "lucide-react";
@@ -33,6 +33,15 @@ export function ProductCard({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
+
+  // Cegah race-condition hidrasi: bila gambar sudah selesai load sebelum React
+  // memasang onLoad, sinkronkan status saat mount agar tidak nyangkut opacity-0.
+  useEffect(() => {
+    if (imgRef.current?.complete && imgRef.current.naturalWidth > 0) {
+      setImgLoaded(true);
+    }
+  }, []);
 
   const categoryImage = getCategoryImage(product.category);
   const Art = (product.art && PRODUCT_ART[product.art]) || HeartPulseArt;
@@ -68,6 +77,7 @@ export function ProductCard({ product }: { product: Product }) {
           )}
           {product.imageUrl ? (
             <Image
+              ref={imgRef}
               src={product.imageUrl}
               alt={product.name}
               fill
@@ -77,6 +87,7 @@ export function ProductCard({ product }: { product: Product }) {
             />
           ) : categoryImage ? (
             <Image
+              ref={imgRef}
               src={categoryImage}
               alt={product.name}
               fill
