@@ -78,7 +78,7 @@ export function ChatClient({ threadId, initialMessages, currentUserId }: Props) 
         <div className="flex-1 min-w-0">
           <p className="font-semibold leading-tight">Admin si4care</p>
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online · biasanya balas dalam 5 menit
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Online · pesan dibalas sesuai antrean
           </p>
         </div>
       </div>

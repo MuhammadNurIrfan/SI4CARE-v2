@@ -155,7 +155,7 @@ export default function AboutPage() {
               </Button>
             </Link>
             <Link href="/shop">
-              <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+              <Button size="lg" variant="outline" className="bg-transparent border-primary-foreground/40 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
                 Lihat Produk
               </Button>
             </Link>

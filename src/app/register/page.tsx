@@ -50,7 +50,7 @@ export default function RegisterPage() {
       <Navbar />
       <main className="flex-grow flex items-center justify-center p-4 pt-24 pb-12">
         <Card className="w-full max-w-lg shadow-lg border-primary/10">
-          <CardHeader className="space-y-2 text-center pb-6">
+          <CardHeader className="space-y-2 text-center pt-4 pb-6">
             <CardTitle className="text-3xl font-bold tracking-tight">Daftar Akun</CardTitle>
             <CardDescription className="text-base">
               Bergabung dengan si4care untuk pengalaman belanja alkes terbaik.

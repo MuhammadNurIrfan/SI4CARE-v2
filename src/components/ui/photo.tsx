@@ -9,6 +9,9 @@ interface PhotoProps {
   className?: string;
   /** Tailwind classes for the gradient shown while loading / on error */
   fallbackClassName?: string;
+  /** Untuk gambar di atas lipatan (hero/LCP): eager-load + prioritas tinggi
+   *  agar tampil segera, tidak menunggu lazy-load. */
+  priority?: boolean;
 }
 
 /**
@@ -16,7 +19,7 @@ interface PhotoProps {
  * (offline / blocked), an on-brand gradient stays in place instead of a
  * broken-image icon — so the layout always looks intentional.
  */
-export function Photo({ src, alt, className, fallbackClassName }: PhotoProps) {
+export function Photo({ src, alt, className, fallbackClassName, priority = false }: PhotoProps) {
   const [status, setStatus] = useState<"loading" | "loaded" | "error">("loading");
 
   return (
@@ -35,7 +38,8 @@ export function Photo({ src, alt, className, fallbackClassName }: PhotoProps) {
         <img
           src={src}
           alt={alt}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           decoding="async"
           onLoad={() => setStatus("loaded")}
           onError={() => setStatus("error")}

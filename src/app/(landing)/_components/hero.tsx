@@ -95,6 +95,7 @@ export function Hero() {
               src={PHOTOS.hero}
               alt="Perawatan kesehatan di rumah bersama si4care"
               className="aspect-[4/5] w-full rounded-[1.6rem]"
+              priority
             />
             {/* gradient veil for legibility of floating cards */}
             <div className="pointer-events-none absolute inset-2 rounded-[1.6rem] ring-1 ring-inset ring-black/5" />
