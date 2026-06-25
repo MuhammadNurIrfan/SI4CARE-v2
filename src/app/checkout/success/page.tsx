@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { auth } from "@/lib/auth";
 import { getOrderDetail } from "@/actions/orders";
+import { PendingPayment } from "./_components/pending-payment";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("id-ID", {
@@ -48,6 +49,8 @@ export default async function CheckoutSuccessPage({ searchParams }: Props) {
           </div>
         )}
       </div>
+
+      {isPending && <PendingPayment />}
 
       {!isPending && (
         <Card className="mb-6 border-emerald-200 bg-emerald-50/50">

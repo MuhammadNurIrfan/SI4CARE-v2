@@ -32,6 +32,7 @@ export function ProductCard({ product }: { product: Product }) {
   const { getCategoryImage } = useCategories();
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
+  const [imgLoaded, setImgLoaded] = useState(false);
 
   const categoryImage = getCategoryImage(product.category);
   const Art = (product.art && PRODUCT_ART[product.art]) || HeartPulseArt;
@@ -61,13 +62,18 @@ export function ProductCard({ product }: { product: Product }) {
     <div className="group flex h-full flex-col overflow-hidden rounded-2xl sm:rounded-3xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
       <Link href={`/shop/${product.id}`} className="relative block">
         <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-accent to-secondary/60">
+          {/* shimmer placeholder selama gambar belum selesai load */}
+          {(product.imageUrl || categoryImage) && !imgLoaded && (
+            <div className="absolute inset-0 animate-pulse bg-gradient-to-br from-muted to-accent/40" />
+          )}
           {product.imageUrl ? (
             <Image
               src={product.imageUrl}
               alt={product.name}
               fill
               sizes="(max-width: 640px) 50vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              onLoad={() => setImgLoaded(true)}
+              className={`object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             />
           ) : categoryImage ? (
             <Image
@@ -75,7 +81,8 @@ export function ProductCard({ product }: { product: Product }) {
               alt={product.name}
               fill
               sizes="(max-width: 640px) 50vw, 25vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              onLoad={() => setImgLoaded(true)}
+              className={`object-cover transition-all duration-500 group-hover:scale-105 ${imgLoaded ? "opacity-100" : "opacity-0"}`}
             />
           ) : (
             <>

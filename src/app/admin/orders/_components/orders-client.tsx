@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { adminUpdateOrderStatus } from "@/actions/orders";
 import type { AdminOrderRow } from "@/actions/orders";
+import { checkMidtransStatus, type MidtransStatusResult } from "@/actions/payment";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,18 @@ function DetailDialog({
   isPending: boolean;
 }) {
   const nexts = NEXT_STATUSES[order.status] ?? [];
+  const [checking, setChecking] = useState(false);
+  const [midtransResult, setMidtransResult] = useState<MidtransStatusResult | null>(null);
+
+  async function handleCheckMidtrans() {
+    setChecking(true);
+    setMidtransResult(null);
+    try {
+      setMidtransResult(await checkMidtransStatus(order.id));
+    } finally {
+      setChecking(false);
+    }
+  }
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -153,6 +166,61 @@ function DetailDialog({
             </div>
           </div>
 
+          {/* Verifikasi pembayaran ke Midtrans (read-only) */}
+          {order.midtransOrderId && (
+            <div className="border rounded-lg p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">Verifikasi Pembayaran</p>
+                <Button size="sm" variant="outline" disabled={checking} onClick={handleCheckMidtrans}>
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${checking ? "animate-spin" : ""}`} />
+                  {checking ? "Mengecek…" : "Cek Status Midtrans"}
+                </Button>
+              </div>
+
+              {midtransResult && midtransResult.ok && (
+                <div className="text-xs space-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Status Midtrans</span>
+                    <span className="font-semibold capitalize">{midtransResult.transactionStatus}</span>
+                  </div>
+                  {midtransResult.paymentType && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Metode</span>
+                      <span className="font-medium capitalize">{midtransResult.paymentType.replace(/_/g, " ")}</span>
+                    </div>
+                  )}
+                  {midtransResult.grossAmount && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Nominal</span>
+                      <span className="font-medium">{fmtRp(midtransResult.grossAmount)}</span>
+                    </div>
+                  )}
+                  {midtransResult.mismatch ? (
+                    <p className="mt-1.5 rounded bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1.5">
+                      ⚠️ Midtrans menyatakan dana <strong>sudah masuk</strong>, tetapi pesanan masih
+                      &ldquo;Menunggu Bayar&rdquo;. Webhook kemungkinan terlewat — silakan proses
+                      pesanan secara manual di bawah.
+                    </p>
+                  ) : midtransResult.settled ? (
+                    <p className="mt-1.5 rounded bg-emerald-50 border border-emerald-200 text-emerald-800 px-2 py-1.5">
+                      ✓ Pembayaran terverifikasi settle di Midtrans, konsisten dengan status pesanan.
+                    </p>
+                  ) : (
+                    <p className="mt-1.5 rounded bg-muted px-2 py-1.5 text-muted-foreground">
+                      Dana belum settle di Midtrans (pelanggan kemungkinan belum menyelesaikan pembayaran).
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {midtransResult && !midtransResult.ok && (
+                <p className="text-xs rounded bg-red-50 border border-red-200 text-red-700 px-2 py-1.5">
+                  {midtransResult.error}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Aksi transisi status */}
           {nexts.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
@@ -210,6 +278,22 @@ export function AdminOrdersClient({ initialOrders }: { initialOrders: AdminOrder
   const [filterStatus, setFilterStatus] = useState<"semua" | DbStatus>("semua");
   const [selected, setSelected] = useState<AdminOrderRow | null>(null);
   const [isPending, startTx] = useTransition();
+
+  // Sinkronkan tabel dengan data server terbaru setiap kali router.refresh()
+  // mengganti prop initialOrders (useState hanya memakai nilai awal sekali).
+  useEffect(() => {
+    setRows(initialOrders);
+  }, [initialOrders]);
+
+  // Auto-update status: selama masih ada pesanan "Menunggu Bayar", poll server
+  // tiap 15 dtk agar status berubah otomatis begitu webhook Midtrans masuk —
+  // admin tidak perlu refresh manual.
+  const hasPendingPayment = rows.some((o) => o.status === "pending_payment");
+  useEffect(() => {
+    if (!hasPendingPayment) return;
+    const t = setInterval(() => router.refresh(), 15_000);
+    return () => clearInterval(t);
+  }, [hasPendingPayment, router]);
 
   const filtered = useMemo(() => {
     return rows.filter((o) => {

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createHash } from "crypto";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -99,6 +100,11 @@ export async function POST(req: NextRequest) {
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(orders.id, order.id));
   }
+
+  // Buang cache server-rendered agar admin & pelanggan melihat status terbaru
+  // saat halaman di-refresh / di-poll.
+  revalidatePath("/admin/orders");
+  revalidatePath("/account/orders");
 
   return NextResponse.json({ ok: true });
 }
