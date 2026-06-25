@@ -1,7 +1,7 @@
 // Tabel auth (user/session/account/verification) di-generate oleh Better Auth CLI:
 //   npx @better-auth/cli generate --config src/lib/auth/index.ts --output src/lib/db/auth-schema.ts
 // Jangan edit auth-schema.ts manual — regenerate ulang kalau konfigurasi auth berubah.
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   mysqlTable,
   varchar,
@@ -32,9 +32,9 @@ export const addresses = mysqlTable("addresses", {
   address: text("address").notNull(),
   city: varchar("city", { length: 255 }).notNull(),
   isPrimary: boolean("is_primary").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -51,9 +51,9 @@ export const categories = mysqlTable("categories", {
   description: text("description"),
   /** URL relatif (/uploads/...) atau URL cloud. null = belum ada foto. */
   imageUrl: varchar("image_url", { length: 500 }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -70,9 +70,9 @@ export const products = mysqlTable("products", {
   /** URL foto utama produk — /uploads/... (lokal) atau https://... (R2/S3). null = belum ada foto. */
   imageUrl: varchar("image_url", { length: 500 }),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -91,9 +91,9 @@ export const variants = mysqlTable("variants", {
   /** FIFO (default) atau FEFO (untuk produk dengan tanggal kadaluarsa) */
   stockMode: mysqlEnum("stock_mode", ["fifo", "fefo"]).default("fifo").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -110,7 +110,7 @@ export const batches = mysqlTable("batches", {
   remaining: int("remaining").notNull(),
   expiredDate: date("expired_date", { mode: "string" }),
   supplier: varchar("supplier", { length: 255 }),
-  receivedAt: timestamp("received_at").defaultNow().notNull(),
+  receivedAt: timestamp("received_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // ─── Voucher / promo code ─────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ export const vouchers = mysqlTable("vouchers", {
   validFrom: timestamp("valid_from").notNull(),
   validUntil: timestamp("valid_until").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // ─── Keranjang belanja (per user, persisten) ──────────────────────────────────
@@ -146,9 +146,9 @@ export const cartItems = mysqlTable(
       .notNull()
       .references(() => variants.id, { onDelete: "cascade" }),
     quantity: int("quantity").notNull(),
-    addedAt: timestamp("added_at").defaultNow().notNull(),
+    addedAt: timestamp("added_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: timestamp("updated_at")
-      .defaultNow()
+      .default(sql`CURRENT_TIMESTAMP`)
       .$onUpdate(() => new Date())
       .notNull(),
   },
@@ -194,9 +194,9 @@ export const orders = mysqlTable("orders", {
   midtransToken: varchar("midtrans_token", { length: 500 }),
   paymentMethod: varchar("payment_method", { length: 50 }),
   paidAt: timestamp("paid_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -260,7 +260,7 @@ export const outboundTransactions = mysqlTable("outbound_transactions", {
   /** Dana yang benar-benar masuk rekening saat marketplace settlement */
   settledAmount: decimal("settled_amount", { precision: 15, scale: 2 }),
   notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   createdBy: varchar("created_by", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
 });
 
@@ -291,7 +291,7 @@ export const ledgerEntries = mysqlTable("ledger_entries", {
   totalSales: decimal("total_sales", { precision: 15, scale: 2 }).notNull(),
   totalHpp: decimal("total_hpp", { precision: 15, scale: 2 }).notNull(),
   grossMargin: decimal("gross_margin", { precision: 15, scale: 2 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // ─── App Settings (konfigurasi global: subsidi ongkir, diskon berjenjang) ────
@@ -300,7 +300,7 @@ export const appSettings = mysqlTable("app_settings", {
   key: varchar("key", { length: 100 }).primaryKey(),
   value: json("value").notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -313,7 +313,7 @@ export const branches = mysqlTable("branches", {
   address: text("address"),
   phone: varchar("phone", { length: 30 }),
   isActive: boolean("is_active").default(true).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // ─── Artikel / Blog ───────────────────────────────────────────────────────────
@@ -332,8 +332,8 @@ export const articles = mysqlTable("articles", {
   status: mysqlEnum("status", ["draft", "terbit", "terjadwal"]).default("draft").notNull(),
   publishedAt: timestamp("published_at"),
   authorId: varchar("author_id", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow().$onUpdate(() => new Date()).notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at").default(sql`CURRENT_TIMESTAMP`).$onUpdate(() => new Date()).notNull(),
 });
 
 // ─── Stock Opname ─────────────────────────────────────────────────────────────
@@ -345,7 +345,7 @@ export const stockOpnameSessions = mysqlTable("stock_opname_sessions", {
   conductedBy: varchar("conducted_by", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
   status: mysqlEnum("status", ["open", "selesai"]).default("open").notNull(),
   notes: text("notes"),
-  conductedAt: timestamp("conducted_at").defaultNow().notNull(),
+  conductedAt: timestamp("conducted_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   closedAt: timestamp("closed_at"),
 });
 
@@ -381,9 +381,9 @@ export const returns = mysqlTable("returns", {
   inspectionNotes: text("inspection_notes"),
   adminId: varchar("admin_id", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
   resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -396,9 +396,9 @@ export const chatThreads = mysqlTable("chat_threads", {
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
   status: mysqlEnum("status", ["open", "closed"]).default("open").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
-    .defaultNow()
+    .default(sql`CURRENT_TIMESTAMP`)
     .$onUpdate(() => new Date())
     .notNull(),
 });
@@ -413,7 +413,7 @@ export const chatMessages = mysqlTable("chat_messages", {
     .references(() => user.id, { onDelete: "cascade" }),
   body: text("body").notNull(),
   isRead: boolean("is_read").default(false).notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 // ─── Relasi ──────────────────────────────────────────────────────────────────
@@ -503,7 +503,7 @@ export const auditLogs = mysqlTable("audit_logs", {
   entityType: varchar("entity_type", { length: 50 }),
   entityId: varchar("entity_id", { length: 100 }),
   detail: json("detail"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({

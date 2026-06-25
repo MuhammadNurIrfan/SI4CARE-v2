@@ -1,4 +1,7 @@
 import { defineConfig } from "drizzle-kit";
+import { loadEnvConfig } from "@next/env";
+
+loadEnvConfig(process.cwd());
 
 // TiDB Cloud Serverless mewajibkan TLS. Sisipkan param ssl ke connection string
 // bila belum ada — mysql2 (dipakai drizzle-kit) mem-parse `?ssl={...}` dari URL.
