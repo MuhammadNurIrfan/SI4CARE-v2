@@ -218,7 +218,14 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
     - Customer: `testing@gmail.com` / `testing123`
     - Admin: `admin@si4care.com` / `Admin1234!`
     - Super Admin: `superadmin@si4care.com` / `SuperAdmin1234!`
-- [ ] Foto produk: ganti ilustrasi SVG → `next/image` + storage (saat ini 0 pemakaian next/image — wajar karena belum ada foto asli)
+- [x] **Foto Produk Per-Item** — sudah selesai (belum ada foto real, tapi infrastruktur 100% complete):
+  - Schema: `products.imageUrl` (VARCHAR 500) + migration di 0004
+  - `/api/upload?folder=products` — auth-guarded endpoint, support JPG/PNG/WebP/GIF (max 5MB), fallback lokal `/public/uploads/products/`
+  - `ImageUpload` component — drag-drop upload, preview, delete, loading state
+  - `ProductDialog` — integrated photo field di admin/products
+  - `getShopProducts()` — returns imageUrl untuk semua produk
+  - `ProductCard` — display imageUrl (fallback ke kategori foto jika null)
+  - **R2 Swap (before deploy)**: set `R2_ENDPOINT`, `R2_ACCESS_KEY`, `R2_SECRET_KEY` di `.env.local`
 - [ ] Deploy hemat memori: `output: "standalone"` di next.config, VPS ≥1GB + swap, atau Vercel; cetak struk thermal ESC/POS + label barcode 33×15mm
 
 ---
@@ -234,6 +241,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
 
 ## Log Sesi
 
+- **2026-09-20 — Fase 6: Photo Uploads (Per-Product) review complete — SUDAH SELESAI**: Infrastruktur 100% complete! Schema imageUrl di products table (migration 0004). `/api/upload?folder=products` endpoint auth-guarded, lokal fallback `/public/uploads/products/`. `ImageUpload` component dengan drag-drop, preview, delete. `ProductDialog` integrated. `getShopProducts()` returns imageUrl. `ProductCard` display imageUrl + fallback kategori foto. Siap untuk R2 swap sebelum deploy (set R2_ENDPOINT + credentials). Tinggal admin upload foto real produk.
 - **2026-09-20 — Fase 4.1 + Fase 5 selesai (CMS Konten + Order Management Web)**:
   - **Fase 4.1 — CMS Konten → DB**: Tabel `content_sections` (key VARCHAR, data JSON) + server actions (getContentSections, updateContentSection, resetContent). `admin/content/page.tsx` jadi async server component; `landing-editor-client.tsx` client component (Hero/CTA/Visibility/Testimonial/FAQ CRUD, useTransition). Seed data dengan default landing content. Migration 0004 ready. `.env.local` created. `npx tsc --noEmit` ✅ bersih.
   - **Fase 5 — Order Management Web**: Review completed — implementation sudah ada & lengkap (berasal dari Fase 1.3 + Hardening). `/admin/orders`: table (desktop) + card (mobile) dengan filter status, detail dialog (customer, alamat snapshot, pricing, Midtrans verify, status transitions). `/account/orders`: customer riwayat dengan status tabs, quick actions (detail, lacak, retur). Server actions: `getMyOrders()`, `adminGetOrders()`, `adminUpdateOrderStatus()`, `getOrderDetail()`. Auth-guarded & anti-IDOR lengkap. `npx tsc --noEmit` ✅ bersih.
