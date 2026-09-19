@@ -8,8 +8,9 @@ import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "@better-auth/utils/password";
 import { db } from "./index";
-import { categories, products, variants, batches, vouchers } from "./schema";
+import { categories, products, variants, batches, vouchers, contentSections } from "./schema";
 import { user, account } from "./auth-schema";
+import type { ContentData } from "@/actions/content";
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
@@ -165,6 +166,76 @@ const VAR = {
   stetoskop:         "33000000-0000-0000-0000-000000000009",
 };
 
+// ─── Content Sections (CMS) ──────────────────────────────────────────────────
+
+async function upsertContentSections() {
+  const existing = await db
+    .select({ key: contentSections.key })
+    .from(contentSections)
+    .where(eq(contentSections.key, "landing"));
+
+  if (existing.length > 0) {
+    console.log("  ✓ Content sections sudah ada — skip");
+    return;
+  }
+
+  const defaultContent: ContentData = {
+    hero: {
+      badge: "Terdaftar BPOM · Izin Alkes Resmi Kemenkes",
+      title: "Alat kesehatan\nterpercaya untuk",
+      titleHighlight: "keluarga & klinik.",
+      subtitle:
+        "Tensimeter, nebulizer, kursi roda, oximeter, dan ribuan produk alkes lainnya — 100% original, harga transparan, dikirim langsung ke pintu Anda.",
+      ctaPrimary: "Lihat Produk Lengkap",
+      ctaSecondary: "Cara Pembelian",
+    },
+    sections: {
+      hero: true,
+      social: true,
+      benefits: true,
+      how: true,
+      products: true,
+      quality: true,
+      testimonials: true,
+      faq: true,
+      cta: true,
+    },
+    testimonials: [
+      { id: "t1", name: "Ibu Dewi Kusuma", role: "Ibu Rumah Tangga · Surabaya", content: "Tensimeter OMRON yang saya beli kondisinya mulus, segel masih utuh, dan lengkap dengan garansi resmi. Pengiriman cepat — 2 hari sudah sampai. Puas banget!" },
+      { id: "t2", name: "dr. Aditya Prasetyo", role: "Dokter Umum · Klinik Pratama Sehat", content: "Saya rutin beli masker dan sarung tangan medis untuk klinik. Kualitas terjaga, harga kompetitif, dan ada faktur untuk pembukuan. Pelayanan responsif." },
+      { id: "t3", name: "Bpk. Hendra Wijaya", role: "Caregiver · Jakarta Selatan", content: "Kursi roda untuk ayah saya tiba dalam kondisi sempurna, terbungkus rapi. CS membantu saya memilih ukuran yang tepat sebelum beli. Sangat merekomendasikan!" },
+      { id: "t4", name: "Siti Rahayu, S.Farm.", role: "Apoteker · Apotek Keluarga Sehat", content: "Sudah langganan untuk kebutuhan alkes apotek. Produk selalu tersedia, pengiriman tepat waktu, dan ada opsi faktur pajak yang memudahkan pembukuan kami." },
+      { id: "t5", name: "Ibu Nana Marliana", role: "Pasien Hipertensi · Bandung", content: "Sudah beli tensimeter 2 kali dan keduanya original. Harganya lebih murah dibanding toko offline. Proses belanja mudah dan ada panduan cara pakainya." },
+      { id: "t6", name: "Bpk. Rudi Santoso", role: "Pemilik Home Care · Medan", content: "Belanja alkes dalam jumlah banyak untuk layanan home care. Tim B2B membantu menegosiasikan harga terbaik dan pengiriman terjadwal. Sangat profesional." },
+    ],
+    faq: [
+      { id: "f1", q: "Apakah semua produk dijamin original?", a: "Ya. Setiap produk berasal dari distributor resmi atau langsung dari principal, lengkap dengan nomor izin edar BPOM/Kemenkes serta garansi resmi pabrik." },
+      { id: "f2", q: "Metode pembayaran apa saja yang tersedia?", a: "Kami mendukung QRIS, Virtual Account (transfer bank), kartu kredit, dan dompet digital melalui Midtrans. Pembayaran aman dan terenkripsi. Saat ini kami belum melayani COD." },
+      { id: "f3", q: "Berapa lama estimasi pengiriman?", a: "Untuk wilayah Jabodetabek umumnya 1–2 hari, dan 2–5 hari untuk luar Jawa, tergantung kurir (JNE, SiCepat, J&T). Nomor resi dapat Anda lacak langsung dari akun." },
+      { id: "f4", q: "Apakah produk bergaransi dan bisa diretur?", a: "Tentu. Garansi resmi berlaku 1–5 tahun tergantung merek. Jika produk rusak saat diterima, Anda dapat mengajukan retur dalam masa retur sesuai kebijakan kami." },
+      { id: "f5", q: "Apakah bisa beli dalam jumlah besar untuk klinik/apotek?", a: "Bisa. Tim B2B kami melayani pembelian grosir dengan harga khusus dan faktur pajak resmi untuk kebutuhan klinik, apotek, dan layanan home care." },
+    ],
+    cta: {
+      kicker: "Mulai belanja sekarang",
+      judul: "Kebutuhan alat kesehatan Anda, ada di sini.",
+      subjudul: "Dari tensimeter untuk keluarga hingga peralatan klinik — lebih dari 500 produk alkes original siap dikirim ke seluruh Indonesia.",
+      tombolUtama: "Belanja Sekarang",
+      tombolSekunder: "Konsultasi Gratis",
+    },
+  };
+
+  await db
+    .insert(contentSections)
+    .values({
+      key: "landing",
+      data: defaultContent,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .execute();
+  console.log("  ✓ Content sections (landing page)");
+}
+
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 async function seed() {
@@ -239,6 +310,10 @@ async function seed() {
   await upsertVariant(VAR.stetoskop, { productId: PROD.stetoskop, sku: "GEA-STETO-DH", activePrice: 165000, minStock: 3, barcode: "8901234500009" });
   await addBatch(VAR.stetoskop, { hpp: 120000, quantity: 20, supplier: "PT GEA Medical" });
 
+  // ── CMS Content ───────────────────────────────────────────────────────────
+  console.log("\n📝 CMS Content:");
+  await upsertContentSections();
+
   // ── Voucher demo ──────────────────────────────────────────────────────────
   console.log("\n🎟️  Voucher:");
   await upsertVoucher("SEHAT10", { type: "percent", value: 10, minOrder: 100000, maxDiscount: 50000 });
@@ -250,6 +325,7 @@ async function seed() {
   console.log("  • 2 akun (admin@si4care.com / Admin1234!, superadmin@si4care.com / SuperAdmin1234!)");
   console.log("  • 4 kategori");
   console.log("  • 8 produk, 9 varian, 9 batch");
+  console.log("  • Content sections (landing page dengan hero, testimonial, FAQ, CTA)");
   console.log("  • 3 voucher (SEHAT10, ALKES5, DISKON20RB)");
   console.log("\nBuka http://localhost:3000/shop untuk melihat hasilnya.\n");
 

@@ -416,6 +416,19 @@ export const chatMessages = mysqlTable("chat_messages", {
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
 });
 
+// ─── CMS Konten (Landing page sections) ──────────────────────────────────────
+
+export const contentSections = mysqlTable("content_sections", {
+  key: varchar("key", { length: 100 }).primaryKey(),
+  /** JSON: hero, testimonials, faq, cta, sections (visibility flags) */
+  data: json("data").notNull(),
+  createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+  updatedAt: timestamp("updated_at")
+    .default(sql`CURRENT_TIMESTAMP`)
+    .$onUpdate(() => new Date())
+    .notNull(),
+});
+
 // ─── Relasi ──────────────────────────────────────────────────────────────────
 
 export const categoriesRelations = relations(categories, ({ many }) => ({
