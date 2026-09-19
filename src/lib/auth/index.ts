@@ -2,7 +2,6 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/lib/db";
 import * as schema from "@/lib/db/schema";
-import { redis } from "@/lib/redis";
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -10,19 +9,7 @@ export const auth = betterAuth({
     schema,
   }),
   rateLimit: {
-    enabled: true,
-    window: 900, // 15 menit
-    max: 5,      // maks 5 percobaan login per window
-    storage: "secondary-storage",
-    customStorage: {
-      get: async (key: string) => {
-        const val = await redis.get<{ key: string; count: number; lastRequest: number }>(key);
-        return val ?? undefined;
-      },
-      set: async (key: string, value: { key: string; count: number; lastRequest: number }) => {
-        await redis.set(key, value, { ex: 900 });
-      },
-    },
+    enabled: false, // Disable untuk dev (Redis tidak diconfig); enable saat production
   },
   emailAndPassword: {
     enabled: true,
