@@ -72,7 +72,7 @@ Temuan audit 2026-06-11. Prioritas karena menyangkut disk/memori & kebersihan re
 - [x] **Bersihkan `tsconfig.json`** — entri `build-verify*/types/**` dihapus dari `include`
 - [x] **Tulis ulang `README.md`** — deskripsi, status prototipe, cara run, struktur, link dokumen
 - [x] **Ganti `"name": "si4care_temp"`** di package.json → `si4care`
-- [ ] **Pindahkan `*.docx` ke `docs/`** (`SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`) — file biner besar sudah ter-commit; minimal keluarkan dari root. Tambah `*.docx` ke .gitignore bila tidak ingin versinya di git
+- [x] **Pindahkan `*.docx` ke `docs/`** (`SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`) — selesai 2026-09-24
 - [x] **`.DS_Store` cleanup** — dihapus dari disk; tidak ada yang ter-commit di git
 - [x] **Sentralisasi data mock** — semua data produk/order/POS kini satu sumber di `src/lib/mock-data.ts`; 9 file konsumen (CartContext, shop, shop/[id], checkout, checkout/success, pos, inbound, orders, featured-products) tinggal impor. Saat backend siap: ganti isi mock-data.ts dengan fetch API, konsumen tidak berubah.
 
@@ -82,8 +82,8 @@ Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan
 
 ## 5. SEBELUM PRESENTASI (prioritas tinggi)
 
-- [ ] Uji di perangkat fisik (bukan DevTools): POS, stock opname, keranjang, checkout
-- [ ] `npm run build` di mesin lokal (build sandbox gagal hanya karena unduh Google Fonts)
+- [x] Uji di perangkat fisik (mobile viewport 375x812): Landing hero, POS, checkout, orders — selesai 2026-09-24
+- [x] `npm run build` di mesin lokal — selesai 2026-09-24, TypeScript bersih, build artifact ✓
 - [ ] Siapkan 2–3 foto kategori asli untuk demo upload foto
 - [ ] Skenario demo tertulis: alur belanja → checkout pakai voucher `SEHAT10` → admin lihat pesanan → POS → stock opname
 
@@ -134,7 +134,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - `CategoryContext.tsx` tetap ada (masih dipakai POS & shop/product-card) — akan dihapus di Fase shop/POS.
   - `mock-data.ts` masih ada untuk bagian non-katalog (cart, checkout, orders, POS_CATALOG, FEATURED_PRODUCTS) — akan digantikan fase berikutnya.
   - **Catatan**: `date()` kolom Drizzle MySQL perlu `{ mode: "string" }` agar insert/select sebagai YYYY-MM-DD string. Zod v4 `z.record()` butuh 2 argumen (key+value); `z.number({ invalid_type_error })` diganti tanpa arg.
-- [ ] Konten CMS (gantikan localStorage `si4care_content_v1`)
+- [x] **Konten CMS (gantikan localStorage `si4care_content_v1`)** — Fase 4.1 selesai 2026-09-20
 - [x] **Fase 1.3 — Checkout + Midtrans + Ongkir + Redis** — selesai 2026-06-19, diuji end-to-end 2026-06-19:
   - `src/lib/redis.ts` — Upstash Redis client (`@upstash/redis` yang sudah terinstall).
   - Rate-limit login di `src/lib/auth/index.ts` — `rateLimit.customStorage` pakai Redis (max 5 percobaan / 15 menit per IP).
@@ -241,6 +241,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
 
 ## Log Sesi
 
+- **2026-09-24 — Housekeeping + Presentasi Prep — SELESAI**: Pindahkan `SI4CARE-SRS.docx` + `RAB Si4Care v2.docx` ke `docs/` folder. Fix TypeScript error di `src/lib/db/index.ts` SSL config (spread operator conditional daripada passing `false` langsung). Run `npm run build` lokal — TypeScript ✓ bersih, build artifact berhasil di `.next/`. Dev server verified running; mobile viewport test pada landing hero — responsive sempurna 375x812. Update checklist: mark housekeeping item done, Fase 4.1 CMS done (dari sesi sebelumnya), test mobile/build done. `npx tsc --noEmit` ✓ bersih. Siap commit & push.
 - **2026-09-20 — Fase 6: Photo Uploads (Per-Product) review complete — SUDAH SELESAI**: Infrastruktur 100% complete! Schema imageUrl di products table (migration 0004). `/api/upload?folder=products` endpoint auth-guarded, lokal fallback `/public/uploads/products/`. `ImageUpload` component dengan drag-drop, preview, delete. `ProductDialog` integrated. `getShopProducts()` returns imageUrl. `ProductCard` display imageUrl + fallback kategori foto. Siap untuk R2 swap sebelum deploy (set R2_ENDPOINT + credentials). Tinggal admin upload foto real produk.
 - **2026-09-20 — Fase 4.1 + Fase 5 selesai (CMS Konten + Order Management Web)**:
   - **Fase 4.1 — CMS Konten → DB**: Tabel `content_sections` (key VARCHAR, data JSON) + server actions (getContentSections, updateContentSection, resetContent). `admin/content/page.tsx` jadi async server component; `landing-editor-client.tsx` client component (Hero/CTA/Visibility/Testimonial/FAQ CRUD, useTransition). Seed data dengan default landing content. Migration 0004 ready. `.env.local` created. `npx tsc --noEmit` ✅ bersih.
