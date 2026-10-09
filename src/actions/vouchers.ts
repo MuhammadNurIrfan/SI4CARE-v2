@@ -174,7 +174,7 @@ export async function saveShippingSubsidy(cfg: ShippingSubsidyConfig) {
   await db
     .insert(appSettings)
     .values({ key: "shipping_subsidy", value: cfg })
-    .onDuplicateKeyUpdate({ set: { value: cfg } });
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: cfg } });
 }
 
 export async function getTieredDiscounts(): Promise<TieredDiscountConfig> {
@@ -187,5 +187,5 @@ export async function saveTieredDiscounts(cfg: TieredDiscountConfig) {
   await db
     .insert(appSettings)
     .values({ key: "tiered_discounts", value: cfg })
-    .onDuplicateKeyUpdate({ set: { value: cfg } });
+    .onConflictDoUpdate({ target: appSettings.key, set: { value: cfg } });
 }

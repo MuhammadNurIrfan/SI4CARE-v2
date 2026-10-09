@@ -1,8 +1,12 @@
 # PRD — si4care: Sistem Web Terintegrasi Alat Kesehatan  
 ## Company Profile + Online Shop + POS/Back-Office  
 
-> **Versi Final** – diturunkan dari SRS v3.3 dan disesuaikan untuk implementasi **Next.js 15 (App Router) + Tailwind + shadcn/ui + Drizzle ORM + MySQL + Better Auth**.  
-> **Status prototipe frontend (Fase 0) selesai.** Dokumen ini menjadi acuan tunggal pengembangan.
+> **Versi Final** – diturunkan dari SRS v3.3 dan disesuaikan untuk implementasi **Next.js 16 (App Router) + Tailwind + shadcn/ui + Drizzle ORM + PostgreSQL + Better Auth**.  
+> **Status: backend aktif.** Dokumen ini menjadi acuan tunggal pengembangan.
+>
+> **Perubahan sejak versi awal (2026-10-08):** database semula MySQL, kini **PostgreSQL di Supabase** — lihat
+> [ADR-0002](docs/adr/0002-pindah-ke-postgresql-supabase.md). Contoh kode di dokumen ini sudah disesuaikan;
+> implementasi sebenarnya ada di `src/lib/db/schema.ts`.
 
 ---
 
@@ -123,11 +127,11 @@ si4care mendigitalkan dan menyatukan operasi toko alat kesehatan (alkes) ke dala
 
 | Lapisan            | Teknologi                                                                 |
 | ------------------ | ------------------------------------------------------------------------- |
-| **Frontend publik**  | Next.js 15 (App Router), Tailwind CSS, shadcn/ui, React Hook Form + Zod   |
+| **Frontend publik**  | Next.js 16 (App Router), Tailwind CSS, shadcn/ui, React Hook Form + Zod   |
 | **Admin/POS**        | Next.js + Server Components + shadcn/ui (Data Table, Form, Chart)         |
 | **Backend API**      | Next.js API Routes + Server Actions + Route Handlers                      |
 | **Auth**             | Better Auth (better-auth) + database session + role middleware            |
-| **Database**         | MySQL 8 (Aiven / PlanetScale / lokal)                                     |
+| **Database**         | PostgreSQL 17 (Supabase, region ap-southeast-1)                           |
 | **ORM**              | Drizzle ORM (migration, relational query)                                |
 | **Cache & Queue**    | Upstash Redis (ongkir, session cache, antrean webhook/email)              |
 | **Integrasi**        | Midtrans (Snap + Core + webhook), RajaOngkir/Komerce, Nodemailer          |
@@ -169,8 +173,8 @@ text
 
 ### 5.3 Auth dengan Better Auth
 - Provider: Email/Password + Google OAuth.
-- Session disimpan di database MySQL dan di‑cache Redis.
-- Middleware di `middleware.ts`:
+- Session disimpan di database PostgreSQL dan di‑cache Redis.
+- Gate rute di `src/proxy.ts` (Next.js 16 men-deprecate konvensi `middleware.ts`):
   ```ts
   export const middleware = authMiddleware({
     authorized: async ({ auth, request }) => {
@@ -192,22 +196,22 @@ Berikut tabel‑tabel inti (dapat ditambahkan sesuai kebutuhan fitur lain).
 
 ts
 // users (Better Auth akan menambahkan kolom otomatis, kita extend)
-export const users = mysqlTable('users', {
+export const users = pgTable('users', {
   id: varchar('id', { length: 36 }).primaryKey(),
   name: varchar('name', { length: 255 }),
   email: varchar('email', { length: 255 }).unique(),
-  role: enum('role', ['super_admin', 'admin', 'customer']),
+  role: roleEnum(), // pgEnum('role', ['super_admin','admin','customer']) dideklarasikan terpisah
   emailVerified: timestamp('email_verified'),
   image: text('image'),
   createdAt: timestamp('created_at').defaultNow(),
-  updatedAt: timestamp('updated_at').onUpdateNow(),
+  updatedAt: timestamp('updated_at').defaultNow().$onUpdate(() => new Date()),
 });
 
 // Sesi & akun untuk Better Auth (akan dibuat oleh library)
 
-export const categories = mysqlTable('categories', { ... });
-export const products = mysqlTable('products', { ... });
-export const variants = mysqlTable('variants', {
+export const categories = pgTable('categories', { ... });
+export const products = pgTable('products', { ... });
+export const variants = pgTable('variants', {
   id: varchar('id', { length: 36 }).primaryKey(),
   productId: varchar('product_id').references(() => products.id),
   sku: varchar('sku', { length: 100 }).unique(),
@@ -219,7 +223,7 @@ export const variants = mysqlTable('variants', {
   // timestamps
 });
 
-export const batches = mysqlTable('batches', {
+export const batches = pgTable('batches', {
   id: varchar('id', { length: 36 }).primaryKey(),
   variantId: varchar('variant_id').references(() => variants.id),
   batchNumber: varchar('batch_number', { length: 100 }),
@@ -231,10 +235,10 @@ export const batches = mysqlTable('batches', {
   receivedAt: timestamp('received_at').defaultNow(),
 });
 
-export const inboundTransactions = mysqlTable('inbound_transactions', { ... });
-export const inboundItems = mysqlTable('inbound_items', { ... });
+export const inboundTransactions = pgTable('inbound_transactions', { ... });
+export const inboundItems = pgTable('inbound_items', { ... });
 
-export const outboundTransactions = mysqlTable('outbound_transactions', {
+export const outboundTransactions = pgTable('outbound_transactions', {
   id: varchar('id', { length: 36 }).primaryKey(),
   orderId: varchar('order_id', { length: 100 }).unique(),
   channel: enum('channel', ['web', 'pos', 'marketplace']),
@@ -254,8 +258,8 @@ export const outboundTransactions = mysqlTable('outbound_transactions', {
   marketplaceFee: decimal('marketplace_fee', { precision: 15, scale: 2 }).default('0'),
 });
 
-export const saleItems = mysqlTable('sale_items', { ... });
-export const batchAllocations = mysqlTable('batch_allocations', {
+export const saleItems = pgTable('sale_items', { ... });
+export const batchAllocations = pgTable('batch_allocations', {
   id: varchar('id', { length: 36 }).primaryKey(),
   saleItemId: varchar('sale_item_id').references(() => saleItems.id),
   batchId: varchar('batch_id').references(() => batches.id),
@@ -263,7 +267,7 @@ export const batchAllocations = mysqlTable('batch_allocations', {
   hpp: decimal('hpp', { precision: 15, scale: 2 }), // snapshot HPP batch
 });
 
-export const ledgerEntries = mysqlTable('ledger_entries', {
+export const ledgerEntries = pgTable('ledger_entries', {
   id: varchar('id', { length: 36 }).primaryKey(),
   outboundId: varchar('outbound_id').references(() => outboundTransactions.id),
   account: varchar('account', { length: 100 }), // revenue, hpp, mdr, shipping_subsidy, platform_fee, ppn, service_fee
@@ -458,16 +462,16 @@ npx create-next-app@latest si4care --typescript --tailwind --eslint
 
 npx shadcn@latest init (pilih style default, CSS variables)
 
-Install tambahan: framer-motion lenis drizzle-orm mysql2 better-auth @upstash/redis
+Install tambahan: framer-motion lenis drizzle-orm postgres better-auth @upstash/redis
 
 Setup environment variables (.env.local): DATABASE_URL, REDIS_URL, MIDTRANS_*, RAJAONGKIR_*, BETTER_AUTH_SECRET, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
 
 Database & Auth
 Buat skema Drizzle sesuai bagian 6.
 
-Generate migration: drizzle-kit generate:mysql
+Generate migration: npm run db:generate
 
-Push ke database: drizzle-kit push
+Terapkan ke database: npm run db:migrate  (hindari db:push — interaktif, bisa menggantung)
 
 Konfigurasi Better Auth dengan adapter Drizzle.
 

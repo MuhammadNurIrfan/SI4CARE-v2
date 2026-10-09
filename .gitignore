@@ -45,3 +45,6 @@ next-env.d.ts
 
 # local scratch
 /tmp/
+
+# Database backup (jangan commit)
+backup_si4care_*.sql.gz

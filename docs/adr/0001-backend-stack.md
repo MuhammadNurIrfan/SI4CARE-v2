@@ -1,6 +1,9 @@
 # ADR-0001 — Stack Backend
 
-**Status:** Diterima — 2026-06-17
+**Status:** ~~Diterima — 2026-06-17~~ → **Digantikan sebagian oleh [ADR-0002](0002-pindah-ke-postgresql-supabase.md) (2026-10-08)**
+> Pilihan **database** (MySQL/MariaDB) sudah tidak berlaku — sekarang PostgreSQL di Supabase.
+> Keputusan lain di ADR ini (satu stack Next.js, Drizzle, Better Auth, Upstash, Midtrans, RajaOngkir) **masih berlaku**.
+> Isi di bawah dipertahankan apa adanya sebagai catatan sejarah.
 **Konteks:** si4care dimulai sebagai prototipe frontend-only (lihat `checklist.md`). `prd.md` §5 sudah menetapkan arsitektur target sejak awal proyek. ADR ini mengonfirmasi keputusan tersebut secara resmi untuk konteks tim aktual, sebelum implementasi backend (Fase 0) dimulai.
 
 ## Keputusan

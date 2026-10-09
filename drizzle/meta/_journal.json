@@ -1,40 +1,12 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1781635481240,
-      "tag": "0000_loud_warlock",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1781798194287,
-      "tag": "0001_careful_madame_masque",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1781965651773,
-      "tag": "0002_faulty_captain_flint",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1781975223348,
-      "tag": "0003_wet_jamie_braddock",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1789840344111,
-      "tag": "0004_rapid_saracen",
+      "version": "7",
+      "when": 1791272433440,
+      "tag": "0000_late_natasha_romanoff",
       "breakpoints": true
     }
   ]

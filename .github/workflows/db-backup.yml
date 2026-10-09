@@ -1,9 +1,12 @@
 name: Database Backup
 
 on:
-  schedule:
-    # Setiap hari jam 02:00 WIB (UTC+7) = 19:00 UTC
-    - cron: "0 19 * * *"
+  # Jadwal harian DINONAKTIFKAN sementara (2026-10-08) sampai secret DATABASE_URL
+  # diisi di GitHub repo settings. Tanpa secret, run otomatis gagal tiap hari.
+  # Untuk mengaktifkan lagi: hapus komentar blok schedule di bawah.
+  # schedule:
+  #   # Setiap hari jam 02:00 WIB (UTC+7) = 19:00 UTC
+  #   - cron: "0 19 * * *"
   workflow_dispatch:
     inputs:
       reason:
@@ -13,42 +16,43 @@ on:
 
 jobs:
   backup:
-    name: Backup MySQL Database
+    name: Backup PostgreSQL Database
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
     env:
-      MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
-      MYSQL_PORT: ${{ secrets.MYSQL_PORT || '3306' }}
-      MYSQL_USER: ${{ secrets.MYSQL_USER }}
-      MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
-      MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE || 'db_toko_si4care' }}
+      # Connection string Supabase (session pooler). Set di:
+      # Settings > Secrets and variables > Actions > New repository secret
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
     steps:
-      - name: Install MySQL client
-        run: sudo apt-get install -y mysql-client
+      - name: Guard — pastikan secret sudah diisi
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret DATABASE_URL belum diset di repository settings."
+            exit 1
+          fi
+
+      - name: Install PostgreSQL client 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client-17
 
       - name: Test DB connection
-        run: |
-          mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" \
-            -e "SELECT 'Connection OK' AS status;" "$MYSQL_DATABASE"
+        run: psql "$DATABASE_URL" -c "SELECT 'Connection OK' AS status;"
 
       - name: Create backup
         run: |
-          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-          FILENAME="backup_${MYSQL_DATABASE}_${TIMESTAMP}.sql.gz"
+          FILENAME="backup_si4care_$(date +%Y%m%d_%H%M%S).sql.gz"
           echo "BACKUP_FILE=$FILENAME" >> $GITHUB_ENV
 
-          mysqldump \
-            -h "$MYSQL_HOST" \
-            -P "$MYSQL_PORT" \
-            -u "$MYSQL_USER" \
-            -p"$MYSQL_PASSWORD" \
-            --single-transaction \
-            --routines \
-            --triggers \
-            --hex-blob \
-            "$MYSQL_DATABASE" | gzip > "$FILENAME"
+          pg_dump "$DATABASE_URL" --no-owner --no-acl | gzip > "$FILENAME"
 
           echo "Backup size: $(du -sh $FILENAME | cut -f1)"
 
@@ -57,7 +61,6 @@ jobs:
         with:
           name: db-backup-${{ env.BACKUP_FILE }}
           path: ${{ env.BACKUP_FILE }}
-          # Retain artifacts for 30 days
           retention-days: 30
 
       # Opsional: upload ke Backblaze B2 atau S3-compatible storage
@@ -78,4 +81,4 @@ jobs:
       - name: Notify on failure
         if: failure()
         run: |
-          echo "::error::Backup GAGAL pada $(date). Periksa koneksi DB dan credentials secrets."
+          echo "::error::Backup GAGAL pada $(date). Periksa secret DATABASE_URL."

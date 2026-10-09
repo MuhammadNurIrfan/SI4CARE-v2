@@ -1,13 +1,10 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import * as schema from "./schema";
 
-// TiDB Cloud Serverless MEWAJIBKAN TLS. XAMPP MariaDB lokal tidak support SSL.
-// Deteksi environment dan set SSL sesuai (undefined untuk lokal dev, config object untuk prod).
-const isLocalXampp = (process.env.DATABASE_URL ?? "").includes("3307");
-const pool = mysql.createPool({
-  uri: process.env.DATABASE_URL!,
-  ...(isLocalXampp ? {} : { ssl: { minVersion: "TLSv1.2", rejectUnauthorized: true } }),
+const client = postgres(process.env.DATABASE_URL!, {
+  prepare: false, // Recommended for serverless (Supabase)
+  ssl: "require", // Supabase requires SSL
 });
 
-export const db = drizzle(pool, { schema, mode: "default" });
+export const db = drizzle(client, { schema });

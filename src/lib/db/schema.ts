@@ -3,25 +3,46 @@
 // Jangan edit auth-schema.ts manual — regenerate ulang kalau konfigurasi auth berubah.
 import { relations, sql } from "drizzle-orm";
 import {
-  mysqlTable,
+  pgTable,
   varchar,
   text,
   boolean,
   timestamp,
-  int,
+  integer,
   decimal,
   json,
-  mysqlEnum,
+  pgEnum,
   date,
   unique,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 import { user } from "./auth-schema";
 
 export * from "./auth-schema";
 
+// ─── PostgreSQL Enum Types ───────────────────────────────────────────────────
+
+export const stockModeEnum = pgEnum("stock_mode", ["fifo", "fefo"]);
+export const voucherTypeEnum = pgEnum("voucher_type", ["percent", "fixed"]);
+export const orderStatusEnum = pgEnum("order_status", [
+  "pending_payment",
+  "paid",
+  "processing",
+  "shipped",
+  "delivered",
+  "cancelled",
+]);
+export const outboundChannelEnum = pgEnum("outbound_channel", ["pos", "marketplace"]);
+export const outboundStatusEnum = pgEnum("outbound_status", ["completed", "pending_settlement", "cancelled"]);
+export const ledgerChannelEnum = pgEnum("ledger_channel", ["pos", "web", "marketplace"]);
+export const articleStatusEnum = pgEnum("article_status", ["draft", "terbit", "terjadwal"]);
+export const stockOpnameStatusEnum = pgEnum("stock_opname_status", ["open", "selesai"]);
+export const returnReasonEnum = pgEnum("return_reason", ["rusak", "tidak_sesuai", "kurang", "expired", "lainnya"]);
+export const returnStatusEnum = pgEnum("return_status", ["pending", "inspeksi", "layak_jual", "write_off", "ditolak"]);
+export const chatStatusEnum = pgEnum("chat_status", ["open", "closed"]);
+
 // ─── Alamat pengiriman ───────────────────────────────────────────────────────
 
-export const addresses = mysqlTable("addresses", {
+export const addresses = pgTable("addresses", {
   id: varchar("id", { length: 36 }).primaryKey(),
   userId: varchar("user_id", { length: 36 })
     .notNull()
@@ -45,7 +66,7 @@ export const addressesRelations = relations(addresses, ({ one }) => ({
 
 // ─── Katalog: kategori → produk → varian → batch ────────────────────────────
 
-export const categories = mysqlTable("categories", {
+export const categories = pgTable("categories", {
   id: varchar("id", { length: 36 }).primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   description: text("description"),
@@ -58,7 +79,7 @@ export const categories = mysqlTable("categories", {
     .notNull(),
 });
 
-export const products = mysqlTable("products", {
+export const products = pgTable("products", {
   id: varchar("id", { length: 36 }).primaryKey(),
   categoryId: varchar("category_id", { length: 36 }).references(
     () => categories.id,
@@ -77,7 +98,7 @@ export const products = mysqlTable("products", {
     .notNull(),
 });
 
-export const variants = mysqlTable("variants", {
+export const variants = pgTable("variants", {
   id: varchar("id", { length: 36 }).primaryKey(),
   productId: varchar("product_id", { length: 36 })
     .notNull()
@@ -87,9 +108,9 @@ export const variants = mysqlTable("variants", {
   /** Atribut dinamis, mis: {"warna":"Merah","ukuran":"L"} */
   attributes: json("attributes").$type<Record<string, string>>(),
   activePrice: decimal("active_price", { precision: 15, scale: 2 }).notNull(),
-  minStock: int("min_stock").default(5).notNull(),
+  minStock: integer("min_stock").default(5).notNull(),
   /** FIFO (default) atau FEFO (untuk produk dengan tanggal kadaluarsa) */
-  stockMode: mysqlEnum("stock_mode", ["fifo", "fefo"]).default("fifo").notNull(),
+  stockMode: stockModeEnum("stock_mode").default("fifo").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
@@ -98,7 +119,7 @@ export const variants = mysqlTable("variants", {
     .notNull(),
 });
 
-export const batches = mysqlTable("batches", {
+export const batches = pgTable("batches", {
   id: varchar("id", { length: 36 }).primaryKey(),
   variantId: varchar("variant_id", { length: 36 })
     .notNull()
@@ -106,8 +127,8 @@ export const batches = mysqlTable("batches", {
   batchNumber: varchar("batch_number", { length: 100 }),
   /** Harga pokok pembelian per unit, snapshot saat inbound */
   hpp: decimal("hpp", { precision: 15, scale: 2 }).notNull(),
-  quantity: int("quantity").notNull(),
-  remaining: int("remaining").notNull(),
+  quantity: integer("quantity").notNull(),
+  remaining: integer("remaining").notNull(),
   expiredDate: date("expired_date", { mode: "string" }),
   supplier: varchar("supplier", { length: 255 }),
   receivedAt: timestamp("received_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -115,18 +136,18 @@ export const batches = mysqlTable("batches", {
 
 // ─── Voucher / promo code ─────────────────────────────────────────────────────
 
-export const vouchers = mysqlTable("vouchers", {
+export const vouchers = pgTable("vouchers", {
   id: varchar("id", { length: 36 }).primaryKey(),
   code: varchar("code", { length: 50 }).notNull().unique(),
-  type: mysqlEnum("type", ["percent", "fixed"]).notNull(),
+  type: voucherTypeEnum().notNull(),
   /** Nilai diskon: persen (0–100) atau nominal Rupiah */
   value: decimal("value", { precision: 15, scale: 2 }).notNull(),
   /** Minimum subtotal agar voucher berlaku */
   minOrder: decimal("min_order", { precision: 15, scale: 2 }),
   /** Maksimum potongan (untuk type percent) */
   maxDiscount: decimal("max_discount", { precision: 15, scale: 2 }),
-  usageLimit: int("usage_limit"),
-  usedCount: int("used_count").default(0).notNull(),
+  usageLimit: integer("usage_limit"),
+  usedCount: integer("used_count").default(0).notNull(),
   validFrom: timestamp("valid_from").notNull(),
   validUntil: timestamp("valid_until").notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -135,7 +156,7 @@ export const vouchers = mysqlTable("vouchers", {
 
 // ─── Keranjang belanja (per user, persisten) ──────────────────────────────────
 
-export const cartItems = mysqlTable(
+export const cartItems = pgTable(
   "cart_items",
   {
     id: varchar("id", { length: 36 }).primaryKey(),
@@ -145,7 +166,7 @@ export const cartItems = mysqlTable(
     variantId: varchar("variant_id", { length: 36 })
       .notNull()
       .references(() => variants.id, { onDelete: "cascade" }),
-    quantity: int("quantity").notNull(),
+    quantity: integer("quantity").notNull(),
     addedAt: timestamp("added_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
     updatedAt: timestamp("updated_at")
       .default(sql`CURRENT_TIMESTAMP`)
@@ -157,20 +178,13 @@ export const cartItems = mysqlTable(
 
 // ─── Pesanan ──────────────────────────────────────────────────────────────────
 
-export const orders = mysqlTable("orders", {
+export const orders = pgTable("orders", {
   id: varchar("id", { length: 36 }).primaryKey(),
   branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   userId: varchar("user_id", { length: 36 }).references(() => user.id, {
     onDelete: "set null",
   }),
-  status: mysqlEnum("status", [
-    "pending_payment",
-    "paid",
-    "processing",
-    "shipped",
-    "delivered",
-    "cancelled",
-  ])
+  status: orderStatusEnum()
     .default("pending_payment")
     .notNull(),
   /** Snapshot alamat saat order dibuat — tidak berubah walau user edit alamat */
@@ -201,7 +215,7 @@ export const orders = mysqlTable("orders", {
     .notNull(),
 });
 
-export const orderItems = mysqlTable("order_items", {
+export const orderItems = pgTable("order_items", {
   id: varchar("id", { length: 36 }).primaryKey(),
   orderId: varchar("order_id", { length: 36 })
     .notNull()
@@ -212,7 +226,7 @@ export const orderItems = mysqlTable("order_items", {
   /** Snapshot nama & SKU saat order — tidak berubah walau produk diedit/dihapus */
   productName: varchar("product_name", { length: 255 }).notNull(),
   sku: varchar("sku", { length: 100 }).notNull(),
-  quantity: int("quantity").notNull(),
+  quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
   /** Alokasi FIFO/FEFO: [{ batchId, qty, hpp }] — dicatat untuk laporan COGS */
   batchAllocations: json("batch_allocations")
@@ -221,10 +235,10 @@ export const orderItems = mysqlTable("order_items", {
 
 // ─── POS: Transaksi keluar (kasir toko + marketplace) ────────────────────────
 
-export const outboundTransactions = mysqlTable("outbound_transactions", {
+export const outboundTransactions = pgTable("outbound_transactions", {
   id: varchar("id", { length: 36 }).primaryKey(),
   branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
-  channel: mysqlEnum("channel", ["pos", "marketplace"]).notNull(),
+  channel: outboundChannelEnum().notNull(),
   refNumber: varchar("ref_number", { length: 100 }).notNull(),
   // Marketplace-only
   platform: varchar("platform", { length: 50 }),
@@ -255,7 +269,7 @@ export const outboundTransactions = mysqlTable("outbound_transactions", {
     voucherPlatform: number;
     customFees: Array<{ name: string; kind: "pct" | "rp"; value: number; sign: "minus" | "plus"; nominal: number }>;
   }>(),
-  status: mysqlEnum("status", ["completed", "pending_settlement", "cancelled"]).default("completed").notNull(),
+  status: outboundStatusEnum().default("completed").notNull(),
   settledAt: timestamp("settled_at"),
   /** Dana yang benar-benar masuk rekening saat marketplace settlement */
   settledAmount: decimal("settled_amount", { precision: 15, scale: 2 }),
@@ -264,7 +278,7 @@ export const outboundTransactions = mysqlTable("outbound_transactions", {
   createdBy: varchar("created_by", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
 });
 
-export const outboundItems = mysqlTable("outbound_items", {
+export const outboundItems = pgTable("outbound_items", {
   id: varchar("id", { length: 36 }).primaryKey(),
   transactionId: varchar("transaction_id", { length: 36 })
     .notNull()
@@ -272,7 +286,7 @@ export const outboundItems = mysqlTable("outbound_items", {
   variantId: varchar("variant_id", { length: 36 }).references(() => variants.id, { onDelete: "set null" }),
   productName: varchar("product_name", { length: 255 }).notNull(),
   sku: varchar("sku", { length: 100 }).notNull(),
-  quantity: int("quantity").notNull(),
+  quantity: integer("quantity").notNull(),
   unitPrice: decimal("unit_price", { precision: 15, scale: 2 }).notNull(),
   unitHpp: decimal("unit_hpp", { precision: 15, scale: 2 }).notNull(),
   itemDiscountAmount: decimal("item_discount_amount", { precision: 15, scale: 2 }).default("0").notNull(),
@@ -281,11 +295,11 @@ export const outboundItems = mysqlTable("outbound_items", {
 
 // ─── Ledger (ringkasan keuangan per transaksi, semua channel) ─────────────────
 
-export const ledgerEntries = mysqlTable("ledger_entries", {
+export const ledgerEntries = pgTable("ledger_entries", {
   id: varchar("id", { length: 36 }).primaryKey(),
   branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   entryDate: date("entry_date", { mode: "string" }).notNull(),
-  channel: mysqlEnum("channel", ["pos", "web", "marketplace"]).notNull(),
+  channel: ledgerChannelEnum().notNull(),
   referenceId: varchar("reference_id", { length: 36 }).notNull(),
   refNumber: varchar("ref_number", { length: 100 }).notNull(),
   totalSales: decimal("total_sales", { precision: 15, scale: 2 }).notNull(),
@@ -296,7 +310,7 @@ export const ledgerEntries = mysqlTable("ledger_entries", {
 
 // ─── App Settings (konfigurasi global: subsidi ongkir, diskon berjenjang) ────
 
-export const appSettings = mysqlTable("app_settings", {
+export const appSettings = pgTable("app_settings", {
   key: varchar("key", { length: 100 }).primaryKey(),
   value: json("value").notNull(),
   updatedAt: timestamp("updated_at")
@@ -307,7 +321,7 @@ export const appSettings = mysqlTable("app_settings", {
 
 // ─── Cabang / Branch ─────────────────────────────────────────────────────────
 
-export const branches = mysqlTable("branches", {
+export const branches = pgTable("branches", {
   id: varchar("id", { length: 36 }).primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   address: text("address"),
@@ -318,7 +332,7 @@ export const branches = mysqlTable("branches", {
 
 // ─── Artikel / Blog ───────────────────────────────────────────────────────────
 
-export const articles = mysqlTable("articles", {
+export const articles = pgTable("articles", {
   id: varchar("id", { length: 36 }).primaryKey(),
   slug: varchar("slug", { length: 200 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
@@ -329,7 +343,7 @@ export const articles = mysqlTable("articles", {
   metaTitle: varchar("meta_title", { length: 255 }),
   metaDescription: text("meta_description"),
   schemaType: varchar("schema_type", { length: 50 }).default("Article"),
-  status: mysqlEnum("status", ["draft", "terbit", "terjadwal"]).default("draft").notNull(),
+  status: articleStatusEnum().default("draft").notNull(),
   publishedAt: timestamp("published_at"),
   authorId: varchar("author_id", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
@@ -338,18 +352,18 @@ export const articles = mysqlTable("articles", {
 
 // ─── Stock Opname ─────────────────────────────────────────────────────────────
 
-export const stockOpnameSessions = mysqlTable("stock_opname_sessions", {
+export const stockOpnameSessions = pgTable("stock_opname_sessions", {
   id: varchar("id", { length: 36 }).primaryKey(),
   sessionNo: varchar("session_no", { length: 50 }).notNull().unique(),
   branchId: varchar("branch_id", { length: 36 }).default("main").notNull(),
   conductedBy: varchar("conducted_by", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
-  status: mysqlEnum("status", ["open", "selesai"]).default("open").notNull(),
+  status: stockOpnameStatusEnum().default("open").notNull(),
   notes: text("notes"),
   conductedAt: timestamp("conducted_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   closedAt: timestamp("closed_at"),
 });
 
-export const stockOpnameItems = mysqlTable("stock_opname_items", {
+export const stockOpnameItems = pgTable("stock_opname_items", {
   id: varchar("id", { length: 36 }).primaryKey(),
   sessionId: varchar("session_id", { length: 36 })
     .notNull()
@@ -359,23 +373,23 @@ export const stockOpnameItems = mysqlTable("stock_opname_items", {
   sku: varchar("sku", { length: 100 }).notNull(),
   barcode: varchar("barcode", { length: 100 }),
   lokasi: varchar("lokasi", { length: 100 }),
-  systemStock: int("system_stock").default(0).notNull(),
-  physicalStock: int("physical_stock"),
-  adjustmentDelta: int("adjustment_delta"),
+  systemStock: integer("system_stock").default(0).notNull(),
+  physicalStock: integer("physical_stock"),
+  adjustmentDelta: integer("adjustment_delta"),
   hpp: decimal("hpp", { precision: 15, scale: 2 }).default("0").notNull(),
   notes: text("notes"),
 });
 
 // ─── Retur pelanggan ──────────────────────────────────────────────────────────
 
-export const returns = mysqlTable("returns", {
+export const returns = pgTable("returns", {
   id: varchar("id", { length: 36 }).primaryKey(),
   orderId: varchar("order_id", { length: 36 }).references(() => orders.id, { onDelete: "set null" }),
   userId: varchar("user_id", { length: 36 }).references(() => user.id, { onDelete: "set null" }),
-  reason: mysqlEnum("reason", ["rusak", "tidak_sesuai", "kurang", "expired", "lainnya"]).notNull(),
+  reason: returnReasonEnum().notNull(),
   detail: text("detail"),
   photos: json("photos").$type<string[]>(),
-  status: mysqlEnum("status", ["pending", "inspeksi", "layak_jual", "write_off", "ditolak"])
+  status: returnStatusEnum()
     .default("pending")
     .notNull(),
   inspectionNotes: text("inspection_notes"),
@@ -390,12 +404,12 @@ export const returns = mysqlTable("returns", {
 
 // ─── Chat ────────────────────────────────────────────────────────────────────
 
-export const chatThreads = mysqlTable("chat_threads", {
+export const chatThreads = pgTable("chat_threads", {
   id: varchar("id", { length: 36 }).primaryKey(),
   customerId: varchar("customer_id", { length: 36 })
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
-  status: mysqlEnum("status", ["open", "closed"]).default("open").notNull(),
+  status: chatStatusEnum().default("open").notNull(),
   createdAt: timestamp("created_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
   updatedAt: timestamp("updated_at")
     .default(sql`CURRENT_TIMESTAMP`)
@@ -403,7 +417,7 @@ export const chatThreads = mysqlTable("chat_threads", {
     .notNull(),
 });
 
-export const chatMessages = mysqlTable("chat_messages", {
+export const chatMessages = pgTable("chat_messages", {
   id: varchar("id", { length: 36 }).primaryKey(),
   threadId: varchar("thread_id", { length: 36 })
     .notNull()
@@ -418,7 +432,7 @@ export const chatMessages = mysqlTable("chat_messages", {
 
 // ─── CMS Konten (Landing page sections) ──────────────────────────────────────
 
-export const contentSections = mysqlTable("content_sections", {
+export const contentSections = pgTable("content_sections", {
   key: varchar("key", { length: 100 }).primaryKey(),
   /** JSON: hero, testimonials, faq, cta, sections (visibility flags) */
   data: json("data").notNull(),
@@ -509,7 +523,7 @@ export const stockOpnameItemsRelations = relations(stockOpnameItems, ({ one }) =
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
 
-export const auditLogs = mysqlTable("audit_logs", {
+export const auditLogs = pgTable("audit_logs", {
   id: varchar("id", { length: 36 }).primaryKey(),
   userId: varchar("user_id", { length: 36 }),
   action: varchar("action", { length: 100 }).notNull(),
