@@ -237,6 +237,9 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
             <Button
               variant={scanMode ? "default" : "outline"}
               className="gap-2 shrink-0"
+              // Label teks disembunyikan di bawah breakpoint sm, jadi tanpa
+              // aria-label tombol ini tidak punya nama aksesibel di mobile.
+              aria-label={scanMode ? "Tutup mode scan barcode" : "Scan barcode"}
               onClick={() => { setScanMode((s) => !s); setScanMsg(null); setBarcodeInput(""); }}
             >
               <ScanLine className="h-4 w-4" /><span className="hidden sm:inline">{scanMode ? "Tutup Scan" : "Scan"}</span>

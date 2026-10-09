@@ -61,7 +61,7 @@ export async function getVariantsWithProduct(): Promise<VariantRow[]> {
       productImageUrl: products.imageUrl,
       categoryId: products.categoryId,
       categoryName: categories.name,
-      totalStock: sql<number>`COALESCE(SUM(${batches.remaining}), 0)`,
+      totalStock: sql<number>`CAST(COALESCE(SUM(${batches.remaining}), 0) AS INTEGER)`,
     })
     .from(variants)
     .innerJoin(products, eq(variants.productId, products.id))
@@ -188,7 +188,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
       activePrice: variants.activePrice,
       categoryId: products.categoryId,
       categoryName: categories.name,
-      totalStock: sql<number>`COALESCE(SUM(${batches.remaining}), 0)`,
+      totalStock: sql<number>`CAST(COALESCE(SUM(${batches.remaining}), 0) AS INTEGER)`,
     })
     .from(products)
     .innerJoin(variants, eq(variants.productId, products.id))

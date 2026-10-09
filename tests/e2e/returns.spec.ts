@@ -1,10 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/**
+ * Judul halaman admin diduplikasi untuk layout desktop & mobile (satu versi
+ * tersembunyi per viewport), jadi selector tanpa filter visibilitas memicu
+ * strict mode violation — bukan karena halamannya salah.
+ */
+const heading = (page: Page, re: RegExp) =>
+  page.locator("h1, h2").filter({ hasText: re }).filter({ visible: true }).first();
+
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password|kata sandi/i).fill(password);
-  await page.getByRole("button", { name: /masuk|login/i }).click();
+  await page.locator("form").getByRole("button", { name: /masuk|login/i }).click();
   await page.waitForURL(/\/(shop|account|\/?$)/, { timeout: 10_000 });
 }
 
@@ -12,15 +20,15 @@ async function loginAsAdmin(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@si4care.com");
   await page.getByLabel(/password|kata sandi/i).fill("Admin1234!");
-  await page.getByRole("button", { name: /masuk|login/i }).click();
+  await page.locator("form").getByRole("button", { name: /masuk|login/i }).click();
   await page.waitForURL(/\/admin/, { timeout: 10_000 });
 }
 
 test.describe("Retur Pelanggan", () => {
   test("halaman riwayat pesanan customer menampilkan daftar", async ({ page }) => {
-    await loginAs(page, "testing@gmail.com", "testing123");
+    await loginAs(page, "budi@example.com", "Customer1234!");
     await page.goto("/account/orders");
-    await expect(page.locator("h1, h2").filter({ hasText: /pesanan|riwayat/i })).toBeVisible({ timeout: 5_000 });
+    await expect(heading(page, /pesanan|riwayat/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test("halaman retur customer memerlukan login", async ({ page }) => {
@@ -29,9 +37,9 @@ test.describe("Retur Pelanggan", () => {
   });
 
   test("formulir ajukan retur tampil setelah login", async ({ page }) => {
-    await loginAs(page, "testing@gmail.com", "testing123");
+    await loginAs(page, "budi@example.com", "Customer1234!");
     await page.goto("/account/returns");
-    await expect(page.locator("h1, h2").filter({ hasText: /retur/i })).toBeVisible({ timeout: 5_000 });
+    await expect(heading(page, /retur/i)).toBeVisible({ timeout: 5_000 });
     // Form atau tombol ajukan retur
     const form = page.locator("form, [data-testid='return-form']");
     const btn = page.getByRole("button", { name: /ajukan retur/i });
@@ -48,7 +56,7 @@ test.describe("Admin — Manajemen Retur", () => {
 
   test("halaman admin/returns menampilkan tabel retur", async ({ page }) => {
     await page.goto("/admin/returns");
-    await expect(page.locator("h1, h2").filter({ hasText: /retur/i })).toBeVisible({ timeout: 5_000 });
+    await expect(heading(page, /retur/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test("filter status retur berfungsi", async ({ page }) => {
@@ -65,7 +73,7 @@ test.describe("Admin — Manajemen Retur", () => {
 
   test("halaman admin/orders menampilkan daftar pesanan dari DB", async ({ page }) => {
     await page.goto("/admin/orders");
-    await expect(page.locator("h1, h2").filter({ hasText: /pesanan/i })).toBeVisible({ timeout: 5_000 });
+    await expect(heading(page, /pesanan/i)).toBeVisible({ timeout: 5_000 });
     // Bisa kosong kalau belum ada transaksi, tapi tidak boleh error
     await expect(page).not.toHaveURL(/error/);
   });

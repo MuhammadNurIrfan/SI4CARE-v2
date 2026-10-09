@@ -3,6 +3,7 @@
 import { eq, gt, and, isNotNull, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { variants, products, batches } from "@/lib/db/schema";
+import { requireAdmin } from "@/lib/server-auth";
 
 export type AlarmType = "stok_rendah" | "stok_habis" | "exp_dekat" | "exp_lewat" | "margin_tipis" | "margin_minus";
 
@@ -16,6 +17,7 @@ export type AlarmItem = {
 };
 
 export async function getLiveAlarms(): Promise<AlarmItem[]> {
+  await requireAdmin();
   const alarms: AlarmItem[] = [];
   const now = new Date().toISOString().slice(0, 10);
 
@@ -67,8 +69,8 @@ export async function getLiveAlarms(): Promise<AlarmItem[]> {
       and(
         isNotNull(batches.expiredDate),
         gt(batches.remaining, 0),
-        sql`${batches.expiredDate} >= CURDATE()`,
-        sql`${batches.expiredDate} <= DATE_ADD(CURDATE(), INTERVAL 30 DAY)`,
+        sql`${batches.expiredDate} >= CURRENT_DATE`,
+        sql`${batches.expiredDate} <= CURRENT_DATE + INTERVAL '30 days'`,
       ),
     );
 
@@ -103,7 +105,7 @@ export async function getLiveAlarms(): Promise<AlarmItem[]> {
       and(
         isNotNull(batches.expiredDate),
         gt(batches.remaining, 0),
-        sql`${batches.expiredDate} < CURDATE()`,
+        sql`${batches.expiredDate} < CURRENT_DATE`,
       ),
     );
 

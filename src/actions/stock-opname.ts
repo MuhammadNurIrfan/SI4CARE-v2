@@ -8,6 +8,7 @@ import {
 import { eq, sql, asc, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { logAudit } from "@/lib/audit";
+import { requireAdmin } from "@/lib/server-auth";
 
 export type SoItemRow = {
   id: string;
@@ -55,6 +56,7 @@ async function getVariantSnapshot() {
 }
 
 export async function getOpenSession(): Promise<OpenSessionData | null> {
+  await requireAdmin();
   const [session] = await db
     .select()
     .from(stockOpnameSessions)
@@ -93,6 +95,7 @@ export async function getOpenSession(): Promise<OpenSessionData | null> {
 }
 
 export async function startSoSession(conductedBy: string): Promise<{ sessionId: string; sessionNo: string }> {
+  await requireAdmin();
   const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const rand = String(Math.floor(Math.random() * 900) + 100);
   const sessionNo = `SO-${today}-${rand}`;
@@ -129,6 +132,7 @@ export async function startSoSession(conductedBy: string): Promise<{ sessionId: 
 export async function saveOpnameProgress(
   updates: { id: string; physicalStock: number | null; notes: string }[],
 ): Promise<void> {
+  await requireAdmin();
   for (const u of updates) {
     await db
       .update(stockOpnameItems)
@@ -144,6 +148,7 @@ export async function closeSession(
   sessionId: string,
   conductedBy = "system",
 ): Promise<{ ok: boolean; adjustedCount: number }> {
+  await requireAdmin();
   const items = await db
     .select()
     .from(stockOpnameItems)
@@ -207,6 +212,7 @@ async function applyBatchAdjustment(variantId: string, delta: number) {
 }
 
 export async function getSessionHistory(): Promise<SoSessionRow[]> {
+  await requireAdmin();
   const rows = await db
     .select()
     .from(stockOpnameSessions)

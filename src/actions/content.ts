@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { contentSections } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import type { HeroContent, CtaContent, Testimoni, FaqItem } from "@/context/ContentContext";
+import { requireAdmin } from "@/lib/server-auth";
 
 export type ContentData = {
   hero: HeroContent;
@@ -86,6 +87,7 @@ export async function getContentSections(): Promise<ContentData> {
 }
 
 export async function updateContentSection(key: string, data: Partial<ContentData>): Promise<void> {
+  await requireAdmin();
   try {
     // Get current content
     const current = await getContentSections();
@@ -125,6 +127,7 @@ export async function updateContentSection(key: string, data: Partial<ContentDat
 }
 
 export async function resetContent(): Promise<void> {
+  await requireAdmin();
   try {
     await db.delete(contentSections).where(eq(contentSections.key, "landing")).execute();
   } catch (e) {

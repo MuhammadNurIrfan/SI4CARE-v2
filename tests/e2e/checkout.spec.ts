@@ -1,76 +1,95 @@
 import { test, expect, type Page } from "@playwright/test";
 
+// Akun ini dibuat oleh `npm run db:seed:demo` (lengkap dengan alamat kirim),
+// jadi suite ini bisa dijalankan ulang tanpa membuat akun manual.
+const CUSTOMER = { email: "budi@example.com", password: "Customer1234!" };
+
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 async function loginAs(page: Page, email: string, password: string) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password|kata sandi/i).fill(password);
-  await page.getByRole("button", { name: /masuk|login/i }).click();
+  // Scope ke <form>: navbar juga punya tombol "Masuk" → selector global ambigu.
+  await page.locator("form").getByRole("button", { name: /masuk|login/i }).click();
   await page.waitForURL(/\/(shop|account|\/?$)/, { timeout: 10_000 });
 }
 
-// ── suite ─────────────────────────────────────────────────────────────────────
+/**
+ * Tambah satu produk ke keranjang. `query` menyaring lewat kotak cari /shop
+ * supaya produk yang terpilih deterministik — penting untuk uji voucher yang
+ * punya minimum belanja (SEHAT10: min Rp100.000).
+ */
+async function addProductToCart(page: Page, query?: string) {
+  await page.goto("/shop");
+  if (query) {
+    await page.getByPlaceholder(/cari produk/i).fill(query);
+  }
+  const addBtn = page.getByRole("button", { name: /^tambah$/i }).first();
+  await expect(addBtn).toBeVisible({ timeout: 8_000 });
+  await addBtn.click();
+  // Tunggu konfirmasi: CartContext menulis ke localStorage lewat useEffect, jadi
+  // pindah halaman terlalu cepat bisa kehilangan item.
+  await expect(page.getByRole("button", { name: /ditambahkan/i }).first()).toBeVisible({ timeout: 5_000 });
+}
+
+// ── Kontrol akses ─────────────────────────────────────────────────────────────
+// Harus di describe sendiri tanpa beforeEach: kalau tidak, sesi sudah terpasang
+// dan redirect ke /login tidak akan pernah terjadi.
+test.describe("Checkout — kontrol akses", () => {
+  test("halaman checkout menolak pengunjung tanpa sesi", async ({ page }) => {
+    await page.goto("/checkout");
+    await expect(page).toHaveURL(/\/login/, { timeout: 5_000 });
+  });
+});
+
+// ── Alur belanja ──────────────────────────────────────────────────────────────
 
 test.describe("Alur Checkout", () => {
   test.beforeEach(async ({ page }) => {
-    await loginAs(page, "testing@gmail.com", "testing123");
+    await loginAs(page, CUSTOMER.email, CUSTOMER.password);
   });
 
   test("halaman /shop menampilkan produk dari DB", async ({ page }) => {
     await page.goto("/shop");
     const cards = page.locator('[data-testid="product-card"], .group.flex.h-full');
     await expect(cards.first()).toBeVisible({ timeout: 8_000 });
-    const count = await cards.count();
-    expect(count).toBeGreaterThan(0);
+    expect(await cards.count()).toBeGreaterThan(0);
   });
 
   test("tambah produk ke keranjang dari halaman toko", async ({ page }) => {
-    await page.goto("/shop");
-    const addBtn = page.getByRole("button", { name: /tambah/i }).first();
-    await addBtn.click();
-    // Badge keranjang harus berubah atau tombol jadi "Ditambahkan"
-    await expect(page.getByRole("button", { name: /ditambahkan/i }).first()).toBeVisible({ timeout: 3_000 });
+    await addProductToCart(page);
   });
 
   test("halaman keranjang menampilkan item yang ditambahkan", async ({ page }) => {
-    // Tambah dulu
-    await page.goto("/shop");
-    await page.getByRole("button", { name: /tambah/i }).first().click();
-    // Navigasi ke keranjang
+    await addProductToCart(page);
     await page.goto("/cart");
-    await expect(page.locator("h1, h2").filter({ hasText: /keranjang/i })).toBeVisible();
-    const items = page.locator('[data-testid="cart-item"], .cart-item, tr');
-    await expect(items.first()).toBeVisible({ timeout: 5_000 });
+    // "Keranjang Belanja" hanya dirender saat keranjang TIDAK kosong — kalau
+    // kosong judulnya "Keranjang Anda Kosong", jadi ini asersi yang bermakna.
+    await expect(page.getByRole("heading", { name: /keranjang belanja/i })).toBeVisible({ timeout: 8_000 });
+    // Tiap baris item memuat nama produk dalam <h3>.
+    await expect(page.locator("h3").first()).toBeVisible({ timeout: 5_000 });
   });
 
-  test("halaman checkout memerlukan sesi login", async ({ page: guestPage }) => {
-    // test ini tidak pakai beforeEach login
-    await guestPage.goto("/checkout");
-    await expect(guestPage).toHaveURL(/\/login/, { timeout: 5_000 });
-  });
-
-  test("checkout: form alamat dan ongkir tampil setelah login", async ({ page }) => {
-    // Asumsi keranjang tidak kosong dari test sebelumnya (atau diisi di sini)
-    await page.goto("/shop");
-    await page.getByRole("button", { name: /tambah/i }).first().click();
+  test("checkout menampilkan alamat pengiriman & opsi kirim", async ({ page }) => {
+    await addProductToCart(page);
     await page.goto("/checkout");
-    await expect(page.locator("form, [data-testid='checkout-form']")).toBeVisible({ timeout: 8_000 });
-    // Alamat section harus ada
-    await expect(page.getByText(/alamat|pengiriman/i).first()).toBeVisible();
+    // Halaman checkout tidak memakai elemen <form> — pakai judul section.
+    await expect(page.getByRole("heading", { name: /^checkout$/i })).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText(/alamat pengiriman/i).first()).toBeVisible();
+    await expect(page.getByText(/pilih pengiriman/i).first()).toBeVisible();
   });
 
   test("voucher SEHAT10 berhasil divalidasi di checkout", async ({ page }) => {
-    await page.goto("/shop");
-    await page.getByRole("button", { name: /tambah/i }).first().click();
+    // Nebulizer (Rp620.000) melewati minimum belanja SEHAT10 (Rp100.000).
+    await addProductToCart(page, "Nebulizer");
     await page.goto("/checkout");
-    const voucherInput = page.getByPlaceholder(/kode voucher|voucher/i);
-    if (await voucherInput.isVisible()) {
-      await voucherInput.fill("SEHAT10");
-      await page.getByRole("button", { name: /pakai|terapkan/i }).click();
-      await expect(page.getByText(/diskon|SEHAT10/i)).toBeVisible({ timeout: 5_000 });
-    } else {
-      test.skip();
-    }
+    const voucherInput = page.getByPlaceholder(/kode promo/i);
+    await expect(voucherInput).toBeVisible({ timeout: 8_000 });
+    await voucherInput.fill("SEHAT10");
+    await page.getByRole("button", { name: /^pakai$/i }).click();
+    // Sukses → "✓ SEHAT10 — hemat Rp…" dan tombol berubah jadi "Hapus".
+    await expect(page.getByText(/SEHAT10/).first()).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText(/hemat/i).first()).toBeVisible();
   });
 });
