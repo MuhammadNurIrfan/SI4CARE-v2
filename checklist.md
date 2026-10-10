@@ -33,6 +33,73 @@
 > Disusun 2026-10-08 setelah migrasi PostgreSQL. Urut berdasarkan prioritas, bukan berdasarkan fase.
 > Detail tiap item ada di section bernomor yang dirujuk.
 
+---
+
+## 🎯 Urutan Eksekusi menuju Deploy — disusun 2026-10-09
+
+> Dikerjakan satu per satu, dari atas. Kolom **Siapa** menandai mana yang hanya bisa
+> dilakukan owner (kredensial, login browser, keputusan, foto) dan mana yang bisa dikerjakan AI.
+> Nomornya dipakai sebagai rujukan singkat saat eksekusi ("kerjakan A2").
+
+### Tahap A — Blocker: tanpa ini deploy menghasilkan situs yang alur utamanya mati
+
+| # | Pekerjaan | Siapa | Status |
+|---|---|---|---|
+| **A1** | **Isi kredensial kosong di `.env.local`** — dikerjakan 2026-10-10, **1 dari 3 layanan hidup**. Diuji ke layanan sungguhan, bukan sekadar dimasukkan ke file: **Midtrans OK** (Snap token berhasil didapat → blocker checkout utama hilang). **Upstash GAGAL** & **Komerce GAGAL** — keduanya bukan karena kredensial, lihat A1a/A1c. `MIDTRANS_MERCHANT_ID` ikut ditambahkan (tidak dirujuk kode, hanya rujukan dashboard) dan `KOMERCE_STORE_ORIGIN` (dipakai di 2 tempat). | Owner + AI | [~] sebagian |
+| **A1a** | **Buat database Upstash Redis baru.** `selected-buzzard-150581.upstash.io` → **NXDOMAIN** dari 3 resolver berbeda: databasenya **sudah tidak ada** (free tier Upstash menghapus yang lama tidak aktif). Token tidak berguna tanpa database hidup. Setelah dibuat, isi `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` yang baru. | Owner | [ ] |
+| **A1b** | **Buat kegagalan cache Redis tidak mematikan endpoint.** `src/app/api/shipping/cost/route.ts:95` memanggil `redis.get()` **tanpa try/catch** sebagai operasi pertama, jadi Redis mati → route **HTTP 500** → checkout tidak bisa mengambil opsi ongkir. Dibuktikan langsung: `ENOTFOUND selected-buzzard-150581.upstash.io` di log dev. Ironisnya tabel ongkir cadangan di baris 110 **tidak pernah tercapai** karena `redis.get` throw lebih dulu; `redis.set` di baris 116 & 121 juga tanpa guard. Cache yang mati seharusnya menurunkan kualitas, bukan menjatuhkan checkout. | AI | [ ] |
+| **A1c** | **Perbarui integrasi API Komerce — endpoint lama sudah mati.** `merchant-api.komerce.id` → **NXDOMAIN**. API-nya pindah DAN berubah bentuk: host `rajaongkir.komerce.id`, path `/api/v1/calculate/domestic-cost`, `Content-Type: application/x-www-form-urlencoded` (bukan JSON), dan **`origin`/`destination` sekarang ID numerik** dari endpoint pencarian tujuan terpisah — bukan nama kota seperti `KOMERCE_STORE_ORIGIN="JAKARTA SELATAN"` yang dipakai sekarang. Jadi butuh langkah pencarian ID + penyesuaian env, bukan sekadar ganti URL. Kegagalan Komerce sendiri sudah ditangani rapi (`Promise.allSettled` → tabel cadangan), jadi ini tidak memblokir checkout **setelah A1b selesai** — hanya membuat ongkir memakai tarif cadangan, bukan tarif nyata. | AI | [ ] |
+| **A2** | **Validasi env pakai zod** — bikin variabel wajib yang kosong menggagalkan startup, bukan merusak checkout diam-diam. Penyebab A1 lolos tanpa sadar: `midtrans.ts` fallback `?? ""` dan `redis.ts` pakai `!`, jadi tidak ada yang mengeluh sampai runtime. | AI | [ ] |
+| **A3** | **Keluarkan kredensial dari repo** — selesai 2026-10-10. Password seed & E2E sekarang dibaca dari env (`SEED_ADMIN_PASSWORD`, `SEED_SUPERADMIN_PASSWORD`, `SEED_CUSTOMER_PASSWORD`); seeder berhenti dengan pesan jelas kalau kosong. Dibersihkan dari `seed.ts`, `seed-demo.ts`, 4 spec E2E, `README.md`, `docs/skenario-demo.md`, dan file ini. Ditambahkan `.env.example` (hanya nama variabel) + pengecualian `!.env.example` di `.gitignore`. `test:e2e` kini memuat `.env.local` lewat `node --env-file`. | AI | [x] |
+| **A3a** | **🔴 ROTASI PASSWORD — wajib, belum selesai.** Membersihkan tree **tidak** menghapus password dari riwayat: password admin lama ada di **2 commit yang sudah ter-push** di GitHub, password customer di 1 commit (dicek dengan `git log origin/main -S'<password>'`). Siapa pun yang bisa membaca repo bisa menemukannya via `git log -p`. Ganti password akun admin di Supabase, lalu perbarui `SEED_*` di `.env.local`. **Juga pastikan repo ini publik atau privat** — kalau publik, ini mendesak. | Owner | [ ] |
+| **A4** | **Push 2 commit yang sudah ada** (`c9a10b3` migrasi PostgreSQL, `5a583e6` auth guard + E2E + agregat SQL). Push sebelumnya diblokir karena A3. | Owner | [ ] |
+
+### Tahap B — Setup & koneksi Vercel
+
+| # | Pekerjaan | Siapa | Status |
+|---|---|---|---|
+| **B0** | Install Vercel CLI — **selesai 2026-10-09, v63.1.0**. Catatan: percobaan pertama gagal `ECONNRESET` (tethering tidak stabil untuk download besar); berhasil setelah `--fetch-retries=10`. | AI | [x] |
+| **B1** | **`vercel login`** → pilih "Continue with GitHub", login sebagai `MuhammadNurIrfan`. Interaktif, tidak bisa dijalankan AI. Ini sekaligus menautkan akun GitHub ke scope Vercel `si-4-care` — lihat §9 soal akun berbeda. | Owner | [ ] |
+| **B2** | *(opsional)* Plugin guidance Vercel. **Wajib pakai `--target claude-code`**: auto-detect salah memilih Cursor, jadi perintah polos di panduan Vercel akan memasang 33 skill + hooks + MCP ke Cursor. Diblokir untuk AI (self-modification). `npx plugins add vercel/vercel-plugin --target claude-code --scope user` | Owner | [ ] |
+| **B3** | *(opsional)* `vercel mcp --clients "Claude Code"` — butuh OAuth, dan self-modification untuk AI. | Owner | [ ] |
+| **B4** | **`vercel link` + daftarkan env var di project Vercel.** Semua yang ada di `.env.local` kecuali yang khusus lokal. | AI | [ ] |
+| **B5** | **`BETTER_AUTH_URL` diarahkan ke domain produksi** (jangan `localhost`) — kalau tidak, redirect auth rusak setelah deploy. | AI | [ ] |
+| **B6** | **Deploy pertama** + asap uji `/`, `/shop`, `/login`, `/admin` di URL produksi. | AI | [ ] |
+
+### Tahap C — Supaya benar setelah hidup di produksi
+
+| # | Pekerjaan | Siapa | Status |
+|---|---|---|---|
+| **C1** | **Swap upload foto ke Cloudflare R2.** `public/uploads/` tidak bisa ditulis di Vercel → semua foto hilang. Butuh `R2_ENDPOINT`, `R2_ACCESS_KEY`, `R2_SECRET_KEY`, dan **`R2_PUBLIC_URL`** yang sudah dirujuk `next.config.ts` tapi belum ada di `.env.local` — tanpa itu `images.remotePatterns` kosong di production dan `next/image` menolak semua gambar remote. | Owner + AI | [ ] |
+| **C2** | **Webhook Midtrans diarahkan ke URL publik** (`/api/payment/notification`). Baru bisa diuji sungguhan setelah B6 — justru terbantu oleh deploy. | Owner | [ ] |
+| **C3** | **Putuskan nasib akun demo di DB produksi** (`budi@`/`siti@`/`hendra@example.com`). Bagus untuk demo klien, tidak boleh ada di produksi sungguhan. | Owner | [ ] |
+| **C5** | **Aktifkan rate-limit login.** `src/lib/auth/index.ts` menyetel `rateLimit: { enabled: false }` dengan komentar "enable saat production" — jadi produksi **tanpa proteksi brute-force** kalau dibiarkan. Butuh Redis hidup (A1a) lebih dulu. | AI | [ ] |
+| **C4** | **Set secret `DATABASE_URL` di GitHub** lalu aktifkan lagi blok `schedule` di `.github/workflows/db-backup.yml` untuk backup harian. | Owner | [ ] |
+
+### Tahap D — Fungsional yang masih tertinggal
+
+| # | Pekerjaan | Siapa | Status |
+|---|---|---|---|
+| **D1** | **Sambungkan jalur baca CMS ke DB** (§7g). Editor admin menulis ke `content_sections`, tapi landing membaca `localStorage` — **edit konten tidak pernah terlihat pengunjung**. Perlu mengubah API `ContentProvider`, jadi butuh persetujuan owner karena menyentuh halaman depan. Sementara: sudah ditandai "jangan didemokan". | AI | [ ] |
+| **D2** | **2–3 foto kategori asli** untuk demo upload. Butuh foto dari owner; jalan di lokal, tapi baru aman di produksi setelah C1. | Owner | [ ] |
+
+### Tahap E — Kebersihan, tidak memblokir apa pun
+
+| # | Pekerjaan | Siapa | Status |
+|---|---|---|---|
+| **E1** | **Koreksi catatan P3**: security headers + CSP **sudah ada** di `next.config.ts` (HSTS, frame-ancestors, CSP per-sumber untuk Midtrans/Upstash/Komerce). Yang benar-benar belum: CSRF token, output escaping, role DB least-privilege. | AI | [x] selesai 2026-10-09 |
+| **E2** | Hapus `mysql2` dari `dependencies` — setelah worktree `.kilo/worktrees/grizzly-slip` selesai/dibuang (`git worktree list`). | AI | [ ] |
+| **E3** | Lepas 2 konsumen terakhir `mock-data.ts` (`shop/[id]/page.tsx`, `featured-products.tsx`), lalu hapus filenya. | AI | [ ] |
+| **E4** | `docs/sql/chat-migration.sql` masih SQL MySQL & tidak dipakai — hapus atau tandai usang. | AI | [ ] |
+| **E5** | Tab switcher POS → pakai `src/components/ui/tabs.tsx` (sekarang `<button>` manual tanpa `role="tab"`). Jangan dikerjakan menjelang demo. | AI | [ ] |
+| **E6** | 34 error lint `react-hooks/set-state-in-effect` pra-eksisting — perbaiki incremental saat menyentuh file terkait. | AI | [ ] |
+| **E7** | P4 nilai tambah: toast `sonner`, scanner kamera POS, inbound+opname atomik, cek kontras WCAG AA. | AI | [ ] |
+
+> **Catatan operasional:** dev server mati otomatis karena batas waktu background pada 2026-10-09.
+> E2E (`npm run test:e2e`) **wajib** ada `npm run dev` jalan, plus `db:seed` dan `db:seed:demo`.
+
+---
+
 ### P0 — Blocker, kerjakan lebih dulu
 
 - [x] **🔒 Tutup 4 server action tanpa auth guard** — selesai 2026-10-09, **blocker deploy**.
@@ -103,8 +170,10 @@
 - [ ] **Swap upload foto ke Cloudflare R2** — `public/uploads/` tidak bisa ditulis di Vercel, jadi
   semua foto produk/kategori akan hilang setelah deploy. Isi `R2_ENDPOINT`, `R2_ACCESS_KEY`,
   `R2_SECRET_KEY` di `.env.local`.
-- [ ] Security pass lanjutan: output escaping, CSRF token, security headers/CSP, role DB
-  least-privilege (Supabase: jangan pakai `postgres` superuser untuk aplikasi).
+- [ ] Security pass lanjutan: output escaping, CSRF token, role DB least-privilege
+  (Supabase: jangan pakai `postgres` superuser untuk aplikasi). **Security headers + CSP sudah
+  SELESAI** — ada di `next.config.ts` (HSTS, X-Frame-Options, Permissions-Policy, CSP per-sumber
+  untuk Midtrans/Upstash/Komerce). Catatan lama yang menyebutnya belum, salah.
 - [ ] Webhook Midtrans butuh URL publik — siapkan `ngrok` untuk dev atau domain untuk produksi.
 - [ ] Deploy: `output: "standalone"` di `next.config`, lalu Vercel atau VPS ≥1GB + swap.
 - [ ] Cetak struk thermal ESC/POS + label barcode 33×15mm.
@@ -294,7 +363,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - **Shared helpers**: `src/lib/server-auth.ts` — `requireSession()` + `requireAdmin()` reusable. `src/lib/audit.ts` — `logAudit()` never throws (audit failure tidak boleh block transaksi).
   - **QRIS compliance**: Dropdown POS tidak lagi tampilkan "0.7% MDR" di nama metode (tidak boleh menyiratkan surcharge ke pelanggan). MDR row di summary berubah jadi "MDR X% (ditanggung toko)". Note di QR dialog: "Pelanggan bayar {total} · MDR 0.7% ditanggung toko". `SERVICE_FEE` di orders.ts sudah flat Rp4.500 untuk semua metode (tidak berubah).
   - **Migration**: `CREATE TABLE audit_logs` via XAMPP mysql (MariaDB 10.4).
-- [ ] Security pass lanjutan: output escaping, CSRF token, security headers/CSP (helmet/middleware), akun DB non-root least-privilege
+- [ ] Security pass lanjutan: output escaping, CSRF token, akun DB non-root least-privilege. **Security headers/CSP sudah selesai** di `next.config.ts` (bukan helmet/middleware).
 - [x] **Test: unit untuk logika harga/diskon/stok, e2e alur checkout & POS** — selesai 2026-06-24:
   - Vitest v2 (`npm test`): 51 unit tests, 3 file, semua hijau.
     - `src/lib/utils/__tests__/stockAllocation.test.ts` — 13 test: FIFO order, FEFO order, expired skip, shortfall, COGS calc, tie-breaker.
@@ -308,9 +377,9 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
     dipakai sejak §7d) + **`npm run db:seed` DAN `npm run db:seed:demo`**. Seeder demo wajib karena
     menyediakan akun customer beserta alamat kirim & riwayat pesanan yang dipakai spec checkout/retur.
     Akun yang dipakai:
-    - Customer: `budi@example.com` / `Customer1234!` (dari `db:seed:demo`; juga ada `siti@`/`hendra@example.com`)
-    - Admin: `admin@si4care.com` / `Admin1234!`
-    - Super Admin: `superadmin@si4care.com` / `SuperAdmin1234!`
+    - Customer: `budi@example.com` / *(dari `SEED_CUSTOMER_PASSWORD`)* (dari `db:seed:demo`; juga ada `siti@`/`hendra@example.com`)
+    - Admin: `admin@si4care.com` / *(dari `SEED_ADMIN_PASSWORD`)*
+    - Super Admin: `superadmin@si4care.com` / *(dari `SEED_SUPERADMIN_PASSWORD`)*
     - ⚠️ `testing@gmail.com` / `testing123` yang tercatat di versi sebelumnya **tidak pernah ada di
       seeder mana pun** — itu sebabnya seluruh spec customer gagal login. Jangan dipakai lagi.
   - **Status 2026-10-09**: 4 spec file, **52/52 lolos** (chromium + mobile), nol skip. Spec `admin-flow`
@@ -473,8 +542,8 @@ dipindahkan ke **`src/lib/reports-query.ts`** (`buildReportData`, modul biasa), 
 `src/actions/reports.ts` tinggal wrapper tipis ber-guard yang me-reekspor tipenya. Pola ini yang
 dipakai kalau ada logika lain yang perlu diuji di luar request context.
 
-**Masih terbuka (§7c, P3):** output escaping, CSRF token, security headers/CSP, role DB
-least-privilege. Jangan anggap §7f menutup seluruh security pass.
+**Masih terbuka (§7c, P3):** output escaping, CSRF token, role DB least-privilege.
+Security headers + CSP sudah ada di `next.config.ts`. Jangan anggap §7f menutup seluruh security pass.
 
 ---
 
@@ -509,7 +578,7 @@ semuanya karena spec-nya usang/salah, **bukan** karena aplikasi rusak. Setelah d
    menyembunyikan test yang rusak.
 7. **Akun test tidak pernah di-seed.** Spec memakai `testing@gmail.com` / `testing123` yang tidak ada
    di seeder mana pun (hilang saat re-seed pasca-migrasi). Sekarang memakai `budi@example.com` /
-   `Customer1234!` dari `npm run db:seed:demo`, lengkap dengan alamat + riwayat pesanan, jadi suite
+   *(dari `SEED_CUSTOMER_PASSWORD`)* dari `npm run db:seed:demo`, lengkap dengan alamat + riwayat pesanan, jadi suite
    bisa direproduksi tanpa membuat akun manual.
 8. **Minimum belanja voucher bikin test rapuh.** `SEHAT10` minimum Rp100.000 sedangkan produk termurah
    Rp25.000, jadi "tambah produk pertama" tidak deterministik. Spec sekarang menyaring lewat kotak
@@ -555,6 +624,25 @@ tanpa pembaca, sementara publik selalu melihat `DEFAULT_CONTENT`. Jadi jangan de
 6. Setiap selesai sesi: jalankan `npx tsc --noEmit` + `npm run lint`, centang item di sini, tambah 1 entri di Log Sesi.
 
 ## Log Sesi
+
+- **2026-10-09 (lanjutan 2) — Setup Vercel + temuan kredensial kosong + daftar eksekusi**:
+  Vercel CLI dipasang (**v63.1.0**); percobaan pertama gagal `ECONNRESET` karena tethering tidak
+  stabil untuk download besar, berhasil setelah `--fetch-retries=10`. **Pelajaran: jangan rangkai
+  `npm install ... || echo` atau `| tail`** — exit code yang dilaporkan jadi milik perintah terakhir,
+  bukan npm, sehingga instalasi gagal sempat terbaca "sukses". Verifikasi dengan memeriksa binary &
+  log, bukan exit code pipeline. `vercel login` dan MCP butuh OAuth interaktif; plugin guidance
+  diblokir untuk AI (self-modification) — semuanya diserahkan ke owner. **Temuan penting saat
+  memeriksa kesiapan deploy: 5 kredensial kosong di `.env.local`** (`MIDTRANS_SERVER_KEY`,
+  `MIDTRANS_CLIENT_KEY`, `KOMERCE_API_KEY`, `UPSTASH_REDIS_REST_URL`/`_TOKEN`) padahal §7b
+  mengklaim terisi — hilang saat `.env.local` dibuat ulang waktu migrasi. Akibatnya **checkout tidak
+  bisa diselesaikan**; tidak tertangkap E2E karena spec hanya menguji sampai validasi voucher, belum
+  sampai pembayaran. Lolos tanpa sadar karena `midtrans.ts` fallback `?? ""` dan `redis.ts` pakai `!`.
+  Temuan lain: `next.config.ts` **sudah** punya security headers + CSP lengkap (3 catatan usang di
+  checklist dikoreksi), dan `R2_PUBLIC_URL` dirujuk `next.config.ts` tapi tidak ada di `.env.local`
+  sehingga `images.remotePatterns` kosong di production. Juga: perintah plugin di panduan Vercel
+  salah auto-detect ke **Cursor**, bukan Claude Code — wajib `--target claude-code`. Seluruh pekerjaan
+  tersisa disusun jadi **daftar eksekusi Tahap A–E** di bagian atas file ini, dengan penanda siapa
+  yang bisa mengerjakan (owner vs AI).
 
 - **2026-10-09 (lanjutan) — P1 selesai: E2E 52/52 + 4 lubang auth ditutup + celah CMS ditemukan**:
   Menjalankan E2E pertama kali sejak migrasi: **34 dari 38 test gagal**, semuanya karena spec usang,

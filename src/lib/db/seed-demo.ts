@@ -22,6 +22,23 @@ import { user, account } from "./auth-schema";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+/**
+ * Password seed dibaca dari environment, bukan di-hardcode — supaya repo tidak
+ * pernah memuat kredensial yang berfungsi. Nama variabelnya ada di `.env.example`.
+ */
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) {
+    console.error(
+      `\n❌ Env ${name} belum diisi.\n` +
+      `   Seed butuh password dari environment agar tidak ada kredensial di repo.\n` +
+      `   Isi di .env.local (lihat .env.example), lalu jalankan ulang.\n`,
+    );
+    process.exit(1);
+  }
+  return v;
+}
+
 function uid() { return randomUUID(); }
 
 function dAgo(n: number): Date {
@@ -381,9 +398,10 @@ async function seed() {
 
   // ── Customer accounts ─────────────────────────────────────────────────────
   console.log("👤 Customers:");
-  await upsertCustomer(CUST.budi,   "Budi Santoso",  "budi@example.com",   "Customer1234!");
-  await upsertCustomer(CUST.siti,   "Siti Rahayu",   "siti@example.com",   "Customer1234!");
-  await upsertCustomer(CUST.hendra, "Hendra Wijaya", "hendra@example.com", "Customer1234!");
+  const custPw = requireEnv("SEED_CUSTOMER_PASSWORD");
+  await upsertCustomer(CUST.budi,   "Budi Santoso",  "budi@example.com",   custPw);
+  await upsertCustomer(CUST.siti,   "Siti Rahayu",   "siti@example.com",   custPw);
+  await upsertCustomer(CUST.hendra, "Hendra Wijaya", "hendra@example.com", custPw);
 
   // ── Alamat pengiriman ─────────────────────────────────────────────────────
   console.log("\n🏠 Alamat:");
@@ -603,7 +621,7 @@ async function seed() {
   // ─────────────────────────────────────────────────────────────────────────────
   console.log("\n✅ Demo seeding selesai!\n");
   console.log("Ringkasan:");
-  console.log("  • 3 customer  (budi@example.com, siti@example.com, hendra@example.com) — password: Customer1234!");
+  console.log("  • 3 customer  (budi@example.com, siti@example.com, hendra@example.com) — password dari SEED_CUSTOMER_PASSWORD");
   console.log("  • 3 alamat pengiriman");
   console.log("  • 6 web orders   (paid · processing · shipped · delivered · cancelled · pending)");
   console.log("  • 5 transaksi POS (tunai · qris · kartu_kredit · transfer · kartu_debit)");

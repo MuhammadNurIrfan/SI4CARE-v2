@@ -14,6 +14,23 @@ import type { ContentData } from "@/actions/content";
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
+/**
+ * Password seed dibaca dari environment, bukan di-hardcode — supaya repo tidak
+ * pernah memuat kredensial yang berfungsi. Nama variabelnya ada di `.env.example`.
+ */
+function requireEnv(name: string): string {
+  const v = process.env[name];
+  if (!v) {
+    console.error(
+      `\n❌ Env ${name} belum diisi.\n` +
+      `   Seed butuh password dari environment agar tidak ada kredensial di repo.\n` +
+      `   Isi di .env.local (lihat .env.example), lalu jalankan ulang.\n`,
+    );
+    process.exit(1);
+  }
+  return v;
+}
+
 function uuid() {
   return randomUUID();
 }
@@ -247,14 +264,14 @@ async function seed() {
     id: "admin-0000-0000-0000-000000000001",
     name: "Admin SI4CARE",
     email: "admin@si4care.com",
-    password: "Admin1234!",
+    password: requireEnv("SEED_ADMIN_PASSWORD"),
     role: "admin",
   });
   await upsertAdmin({
     id: "admin-0000-0000-0000-000000000002",
     name: "Super Admin",
     email: "superadmin@si4care.com",
-    password: "SuperAdmin1234!",
+    password: requireEnv("SEED_SUPERADMIN_PASSWORD"),
     role: "super_admin",
   });
 
@@ -322,7 +339,7 @@ async function seed() {
 
   console.log("\n✅ Seeding selesai!\n");
   console.log("Ringkasan:");
-  console.log("  • 2 akun (admin@si4care.com / Admin1234!, superadmin@si4care.com / SuperAdmin1234!)");
+  console.log("  • 2 akun (admin@si4care.com, superadmin@si4care.com) — password dari SEED_ADMIN_PASSWORD / SEED_SUPERADMIN_PASSWORD");
   console.log("  • 4 kategori");
   console.log("  • 8 produk, 9 varian, 9 batch");
   console.log("  • Content sections (landing page dengan hero, testimonial, FAQ, CTA)");

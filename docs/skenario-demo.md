@@ -22,9 +22,9 @@ jadi ceritanya menyambung dan tidak ada layar kosong.
 
 | Peran | Email | Password |
 |---|---|---|
-| Admin | `admin@si4care.com` | `Admin1234!` |
-| Super Admin | `superadmin@si4care.com` | `SuperAdmin1234!` |
-| Pelanggan | `budi@example.com` | `Customer1234!` |
+| Admin | `admin@si4care.com` | *(dari `SEED_ADMIN_PASSWORD`)* |
+| Super Admin | `superadmin@si4care.com` | *(dari `SEED_SUPERADMIN_PASSWORD`)* |
+| Pelanggan | `budi@example.com` | *(dari `SEED_CUSTOMER_PASSWORD`)* |
 
 ### Angka yang sudah tersedia di data demo
 

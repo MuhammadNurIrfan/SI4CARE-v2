@@ -1,6 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
+ * Kredensial dibaca dari environment, bukan di-hardcode — repo tidak boleh
+ * memuat password yang berfungsi. `npm run test:e2e` memuat `.env.local`
+ * lewat `node --env-file`; nama variabelnya ada di `.env.example`.
+ */
+function cred(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Env ${name} belum diisi — lihat .env.example`);
+  return v;
+}
+
+/**
  * Smoke test halaman back-office yang server action-nya baru diberi
  * `requireAdmin()` (reports, alarms, stock-opname). Tujuannya memastikan
  * gerbang auth tidak malah mematahkan halaman saat sesi admin ADA — guard yang
@@ -10,7 +21,7 @@ import { test, expect, type Page } from "@playwright/test";
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@si4care.com");
-  await page.getByLabel(/password|kata sandi/i).fill("Admin1234!");
+  await page.getByLabel(/password|kata sandi/i).fill(cred("SEED_ADMIN_PASSWORD"));
   await page.locator("form").getByRole("button", { name: /masuk|login/i }).click();
   await page.waitForURL(/\/admin/, { timeout: 10_000 });
 }

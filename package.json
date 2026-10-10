@@ -18,7 +18,7 @@
     "db:backup": "bash scripts/db-backup.sh",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "node --env-file=.env.local node_modules/.bin/playwright test"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1075.0",

@@ -110,16 +110,16 @@ Dari `npm run db:seed`:
 
 | Email | Password | Role |
 |---|---|---|
-| `admin@si4care.com` | `Admin1234!` | admin |
-| `superadmin@si4care.com` | `SuperAdmin1234!` | super_admin |
+| `admin@si4care.com` | *(dari `SEED_ADMIN_PASSWORD`)* | admin |
+| `superadmin@si4care.com` | *(dari `SEED_SUPERADMIN_PASSWORD`)* | super_admin |
 
 Dari `npm run db:seed:demo` — punya alamat kirim & riwayat pesanan, dipakai juga oleh E2E:
 
 | Email | Password | Role |
 |---|---|---|
-| `budi@example.com` | `Customer1234!` | customer |
-| `siti@example.com` | `Customer1234!` | customer |
-| `hendra@example.com` | `Customer1234!` | customer |
+| `budi@example.com` | *(dari `SEED_CUSTOMER_PASSWORD`)* | customer |
+| `siti@example.com` | *(dari `SEED_CUSTOMER_PASSWORD`)* | customer |
+| `hendra@example.com` | *(dari `SEED_CUSTOMER_PASSWORD`)* | customer |
 
 Pelanggan juga bisa daftar sendiri lewat `/register` (role default `customer`).
 
@@ -131,8 +131,12 @@ Voucher demo:
 | `ALKES5` | 5% | Rp 50.000 | — |
 | `DISKON20RB` | Rp 20.000 | Rp 200.000 | — |
 
-> ⚠️ Akun-akun di atas adalah **akun demo dengan password yang diketahui publik lewat repo ini**.
-> Hapus atau ganti passwordnya sebelum dipakai di lingkungan produksi yang sesungguhnya.
+> ⚠️ Password akun-akun ini **tidak disimpan di repo** — isinya diambil dari `SEED_*` di
+> `.env.local` (lihat `.env.example`). Seeder berhenti dengan pesan jelas kalau belum diisi.
+>
+> Catatan penting: password lama **sudah terlanjur masuk riwayat git yang
+> ter-push**, jadi masih bisa ditemukan lewat `git log -p`. Membersihkan file saja tidak cukup —
+> **rotasi passwordnya** sebelum dipakai di lingkungan yang bisa diakses publik.
 
 ## Troubleshooting
 

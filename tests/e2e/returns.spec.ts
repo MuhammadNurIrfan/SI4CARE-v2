@@ -1,6 +1,17 @@
 import { test, expect, type Page } from "@playwright/test";
 
 /**
+ * Kredensial dibaca dari environment, bukan di-hardcode — repo tidak boleh
+ * memuat password yang berfungsi. `npm run test:e2e` memuat `.env.local`
+ * lewat `node --env-file`; nama variabelnya ada di `.env.example`.
+ */
+function cred(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Env ${name} belum diisi — lihat .env.example`);
+  return v;
+}
+
+/**
  * Judul halaman admin diduplikasi untuk layout desktop & mobile (satu versi
  * tersembunyi per viewport), jadi selector tanpa filter visibilitas memicu
  * strict mode violation — bukan karena halamannya salah.
@@ -19,14 +30,14 @@ async function loginAs(page: Page, email: string, password: string) {
 async function loginAsAdmin(page: Page) {
   await page.goto("/login");
   await page.getByLabel(/email/i).fill("admin@si4care.com");
-  await page.getByLabel(/password|kata sandi/i).fill("Admin1234!");
+  await page.getByLabel(/password|kata sandi/i).fill(cred("SEED_ADMIN_PASSWORD"));
   await page.locator("form").getByRole("button", { name: /masuk|login/i }).click();
   await page.waitForURL(/\/admin/, { timeout: 10_000 });
 }
 
 test.describe("Retur Pelanggan", () => {
   test("halaman riwayat pesanan customer menampilkan daftar", async ({ page }) => {
-    await loginAs(page, "budi@example.com", "Customer1234!");
+    await loginAs(page, "budi@example.com", cred("SEED_CUSTOMER_PASSWORD"));
     await page.goto("/account/orders");
     await expect(heading(page, /pesanan|riwayat/i)).toBeVisible({ timeout: 5_000 });
   });
@@ -37,7 +48,7 @@ test.describe("Retur Pelanggan", () => {
   });
 
   test("formulir ajukan retur tampil setelah login", async ({ page }) => {
-    await loginAs(page, "budi@example.com", "Customer1234!");
+    await loginAs(page, "budi@example.com", cred("SEED_CUSTOMER_PASSWORD"));
     await page.goto("/account/returns");
     await expect(heading(page, /retur/i)).toBeVisible({ timeout: 5_000 });
     // Form atau tombol ajukan retur

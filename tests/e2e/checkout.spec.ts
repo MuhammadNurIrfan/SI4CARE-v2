@@ -1,8 +1,19 @@
 import { test, expect, type Page } from "@playwright/test";
 
+/**
+ * Kredensial dibaca dari environment, bukan di-hardcode — repo tidak boleh
+ * memuat password yang berfungsi. `npm run test:e2e` memuat `.env.local`
+ * lewat `node --env-file`; nama variabelnya ada di `.env.example`.
+ */
+function cred(name: string): string {
+  const v = process.env[name];
+  if (!v) throw new Error(`Env ${name} belum diisi — lihat .env.example`);
+  return v;
+}
+
 // Akun ini dibuat oleh `npm run db:seed:demo` (lengkap dengan alamat kirim),
 // jadi suite ini bisa dijalankan ulang tanpa membuat akun manual.
-const CUSTOMER = { email: "budi@example.com", password: "Customer1234!" };
+const CUSTOMER = { email: "budi@example.com", password: cred("SEED_CUSTOMER_PASSWORD") };
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
