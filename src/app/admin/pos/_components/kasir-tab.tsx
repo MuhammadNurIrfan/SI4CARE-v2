@@ -15,12 +15,12 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useCategories } from "@/context/CategoryContext";
 import { savePosTransaction, type PosProduct } from "@/actions/pos";
 import {
   MDR_RATES, calcLineDiscount, calcCartTotals,
   type PosCartItem, type CartTotals,
 } from "@/lib/pos-calc";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(n);
@@ -36,7 +36,6 @@ type ReceiptData = {
 
 export function KasirTab({ products }: { products: PosProduct[] }) {
   const router = useRouter();
-  const { getCategoryImage } = useCategories();
   const [isPending, startTransition] = useTransition();
 
   const [search, setSearch] = useState("");
@@ -264,7 +263,7 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
         <ScrollArea className="flex-1 p-3 lg:p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 lg:gap-3 pb-24 lg:pb-0">
             {filtered.map((p) => {
-              const img = getCategoryImage(p.category);
+              const img = p.categoryImage ?? "";
               const outOfStock = p.stock === 0;
               return (
                 <button key={p.id} onClick={() => !outOfStock && addToCart(p)} disabled={outOfStock}
@@ -364,7 +363,7 @@ export function KasirTab({ products }: { products: PosProduct[] }) {
               <div className="border rounded-lg p-5 space-y-3 bg-white text-black font-mono text-xs">
                 <div className="text-center space-y-0.5">
                   <p className="text-sm font-bold">si4care</p>
-                  <p className="text-[10px]">Jl. Kesehatan No. 123, Jakarta Selatan</p>
+                  <p className="text-[10px]">{SITE_CONFIG.addressShort}</p>
                 </div>
                 <Separator />
                 <div className="flex justify-between text-[10px]"><span>No: {receiptData.refNumber}</span><span>{receiptData.date}</span></div>

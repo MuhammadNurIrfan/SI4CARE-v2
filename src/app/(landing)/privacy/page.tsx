@@ -1,3 +1,5 @@
+import { SITE_CONFIG } from "@/lib/site-config";
+
 const lastUpdated = "1 Juni 2026";
 
 const sections = [
@@ -64,7 +66,7 @@ Anda dapat mengatur preferensi cookie melalui pengaturan browser Anda. Namun, me
 • Menolak penggunaan data untuk keperluan pemasaran.
 • Meminta portabilitas data dalam format yang dapat dibaca mesin.
 
-Untuk menggunakan hak-hak ini, hubungi kami di privacy@si4care.id.`,
+Untuk menggunakan hak-hak ini, hubungi kami di ${SITE_CONFIG.email.privacy}.`,
   },
   {
     title: "7. Retensi Data",
@@ -76,7 +78,7 @@ Untuk menggunakan hak-hak ini, hubungi kami di privacy@si4care.id.`,
   },
   {
     title: "9. Hubungi Kami",
-    content: `Jika Anda memiliki pertanyaan atau kekhawatiran mengenai kebijakan privasi ini, hubungi kami:\n\nEmail: privacy@si4care.id\nTelepon: +62 21 5555 7890\nAlamat: Jl. Kesehatan No. 123, Menteng, Jakarta Pusat 10310`,
+    content: `Jika Anda memiliki pertanyaan atau kekhawatiran mengenai kebijakan privasi ini, hubungi kami:\n\nEmail: ${SITE_CONFIG.email.privacy}\nTelepon: ${SITE_CONFIG.phone}\nAlamat: ${SITE_CONFIG.address}`,
   },
 ];
 

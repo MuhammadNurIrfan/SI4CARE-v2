@@ -7,7 +7,9 @@ const MIDTRANS_SNAP = "https://app.sandbox.midtrans.com https://app.midtrans.com
 const MIDTRANS_API  = "https://api.sandbox.midtrans.com https://api.midtrans.com";
 const GOOGLE_FONTS  = "https://fonts.googleapis.com https://fonts.gstatic.com";
 const UPSTASH       = "https://*.upstash.io";
-const KOMERCE       = "https://merchant-api.komerce.id";
+// Host lama merchant-api.komerce.id sudah mati (NXDOMAIN). Dipanggil dari server, bukan browser,
+// jadi entri CSP ini hanya berjaga-jaga bila suatu saat dipanggil dari klien.
+const KOMERCE       = "https://rajaongkir.komerce.id";
 
 const securityHeaders = [
   // Cegah clickjacking — halaman tidak boleh di-embed di iframe domain lain
@@ -50,7 +52,9 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       `default-src 'self'`,
-      `script-src 'self' 'unsafe-inline' ${MIDTRANS_SNAP}`,
+      // React memakai eval() hanya di mode development (rekonstruksi callstack). Di production tidak
+      // diperlukan, jadi 'unsafe-eval' TIDAK dilonggarkan di sana.
+      `script-src 'self' 'unsafe-inline' ${IS_PROD ? "" : "'unsafe-eval'"} ${MIDTRANS_SNAP}`,
       `style-src 'self' 'unsafe-inline' ${GOOGLE_FONTS}`,
       `font-src 'self' ${GOOGLE_FONTS}`,
       `img-src 'self' data: blob: https:`,

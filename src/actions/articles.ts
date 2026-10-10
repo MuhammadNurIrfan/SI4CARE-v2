@@ -6,6 +6,7 @@ import { eq, desc, and, lte } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { z } from "zod/v4";
 import { requireAdmin } from "@/lib/server-auth";
+import { revalidateBlog } from "@/lib/revalidate";
 
 const upsertArticleSchema = z.object({
   id: z.string().optional(),
@@ -179,6 +180,7 @@ export async function upsertArticle(input: UpsertArticleInput): Promise<{ ok: bo
       .where(eq(articles.id, id));
   }
 
+  revalidateBlog();
   return { ok: true, slug };
 }
 
@@ -186,5 +188,6 @@ export async function deleteArticle(id: string): Promise<{ ok: boolean }> {
   await requireAdmin();
   if (!z.string().min(1).safeParse(id).success) return { ok: false };
   await db.delete(articles).where(eq(articles.id, id));
+  revalidateBlog();
   return { ok: true };
 }

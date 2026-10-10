@@ -56,14 +56,7 @@ export function Testimonials() {
       <div className="container mx-auto px-4 md:px-6">
         <motion.div variants={fadeInUp} initial="hidden" whileInView="show" viewport={VIEWPORT} className="mx-auto mb-10 max-w-2xl text-center">
           <span className="mb-3 block text-sm font-semibold uppercase tracking-[0.18em] text-primary">Ulasan Pelanggan</span>
-          <h2 className="font-heading text-3xl font-bold md:text-4xl">Dipercaya ribuan keluarga &amp; tenaga medis</h2>
-          <div className="mt-5 flex items-center justify-center gap-3">
-            <div className="flex gap-0.5">
-              {[0, 1, 2, 3, 4].map((s) => <Star key={s} className="h-5 w-5 fill-amber-400 text-amber-400" />)}
-            </div>
-            <span className="font-bold">4.9</span>
-            <span className="text-sm text-muted-foreground">· 2.847 ulasan terverifikasi</span>
-          </div>
+          <h2 className="font-heading text-3xl font-bold md:text-4xl">Cerita dari pelanggan kami</h2>
         </motion.div>
 
         <motion.div variants={fadeInUp} initial="hidden" whileInView="show" viewport={VIEWPORT}>

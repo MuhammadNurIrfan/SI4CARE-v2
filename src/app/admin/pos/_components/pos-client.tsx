@@ -2,33 +2,45 @@
 
 import { useState } from "react";
 import { Store, ShoppingBag } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { KasirTab } from "./kasir-tab";
 import { MarketplaceTab } from "./marketplace-tab";
 import type { PosProduct } from "@/actions/pos";
 
+type PosTab = "kasir" | "marketplace";
+
+// Tombol tab POS lebih besar dari default shadcn (h-8) dan tak memakai garis bawah.
+// Override tinggi harus berprefiks `group-data-horizontal/tabs:` — tailwind-merge menganggap
+// `h-auto` polos dan varian berprefiks sebagai kunci berbeda, sehingga h-8 bawaan tetap menang.
+const triggerClass =
+  "h-auto flex-none gap-2 rounded-lg px-4 py-2 text-muted-foreground " +
+  "data-active:border-primary/20 data-active:text-primary data-active:shadow-sm";
+
 export function PosClient({ products }: { products: PosProduct[] }) {
-  const [tab, setTab] = useState<"kasir" | "marketplace">("kasir");
+  const [tab, setTab] = useState<PosTab>("kasir");
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-3.5rem)] lg:h-[calc(100dvh-4rem)] overflow-hidden">
-      <div className="flex gap-1 p-2 bg-muted/30 border-b shrink-0">
-        <button
-          onClick={() => setTab("kasir")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "kasir" ? "bg-background shadow-sm text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-        >
+    <Tabs
+      value={tab}
+      onValueChange={(v) => setTab(v as PosTab)}
+      className="flex h-[calc(100dvh-3.5rem)] flex-col gap-0 overflow-hidden lg:h-[calc(100dvh-4rem)]"
+    >
+      <TabsList className="group-data-horizontal/tabs:h-auto w-full shrink-0 justify-start gap-1 rounded-none border-b bg-muted/30 p-2">
+        <TabsTrigger value="kasir" className={triggerClass}>
           <Store className="h-4 w-4" /> Kasir Toko
-        </button>
-        <button
-          onClick={() => setTab("marketplace")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab === "marketplace" ? "bg-background shadow-sm text-primary border border-primary/20" : "text-muted-foreground hover:text-foreground"}`}
-        >
+        </TabsTrigger>
+        <TabsTrigger value="marketplace" className={triggerClass}>
           <ShoppingBag className="h-4 w-4" /> Transaksi Marketplace
-        </button>
-      </div>
+        </TabsTrigger>
+      </TabsList>
 
-      <div className="flex-1 overflow-hidden flex flex-col">
-        {tab === "kasir" ? <KasirTab products={products} /> : <MarketplaceTab products={products} />}
-      </div>
-    </div>
+      {/* Hanya panel aktif yang di-mount (default base-ui) — sama seperti sebelumnya. */}
+      <TabsContent value="kasir" className="flex flex-1 flex-col overflow-hidden text-base">
+        <KasirTab products={products} />
+      </TabsContent>
+      <TabsContent value="marketplace" className="flex flex-1 flex-col overflow-hidden text-base">
+        <MarketplaceTab products={products} />
+      </TabsContent>
+    </Tabs>
   );
 }

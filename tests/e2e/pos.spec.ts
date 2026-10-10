@@ -21,10 +21,10 @@ async function loginAsAdmin(page: Page) {
 }
 
 /**
- * Tab switcher POS bukan ARIA tabs — `pos-client.tsx` memakai <button> biasa
- * (label "Kasir Toko" / "Transaksi Marketplace"), jadi getByRole("tab") tidak cocok.
+ * Tab switcher POS memakai komponen shadcn `Tabs` (role="tab"). Dulu berupa <button>
+ * biasa tanpa semantik tab, sehingga selector `getByRole("tab")` tak pernah cocok.
  */
-const posTab = (page: Page, name: RegExp) => page.getByRole("button", { name });
+const posTab = (page: Page, name: RegExp) => page.getByRole("tab", { name });
 
 /**
  * Panel keranjang desktop (`hidden lg:flex`) tetap ada di DOM saat viewport mobile,

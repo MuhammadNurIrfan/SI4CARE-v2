@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateStorefront } from "@/lib/revalidate";
 import { randomUUID } from "crypto";
 import { eq, asc, sql, and } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -119,6 +120,7 @@ export async function createProductWithVariant(
   });
 
   revalidatePath("/admin/products");
+  revalidateStorefront();
   return { productId, variantId };
 }
 
@@ -138,6 +140,7 @@ export async function updateProduct(productId: string, input: ProductInput) {
     })
     .where(eq(products.id, productId));
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }
 
 export async function updateVariant(variantId: string, input: Omit<VariantInput, "productId">) {
@@ -157,6 +160,7 @@ export async function updateVariant(variantId: string, input: Omit<VariantInput,
     })
     .where(eq(variants.id, variantId));
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }
 
 // ─── Shop public API ──────────────────────────────────────────────────────────
@@ -171,6 +175,8 @@ export type ShopProduct = {
   category: string;
   categoryId: string | null;
   imageUrl: string | null;
+  /** Foto kategori dari DB — dipakai sebagai gambar bila produk belum punya foto sendiri. */
+  categoryImageUrl: string | null;
   stock: number;
   art?: string;
 };
@@ -188,6 +194,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
       activePrice: variants.activePrice,
       categoryId: products.categoryId,
       categoryName: categories.name,
+      categoryImageUrl: categories.imageUrl,
       totalStock: sql<number>`CAST(COALESCE(SUM(${batches.remaining}), 0) AS INTEGER)`,
     })
     .from(products)
@@ -195,7 +202,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
     .leftJoin(categories, eq(products.categoryId, categories.id))
     .leftJoin(batches, eq(batches.variantId, variants.id))
     .where(and(eq(products.isActive, true), eq(variants.isActive, true)))
-    .groupBy(variants.id, products.id, categories.name)
+    .groupBy(variants.id, products.id, categories.name, categories.imageUrl)
     .orderBy(asc(products.name));
 
   return rows.map((r) => ({
@@ -205,6 +212,7 @@ export async function getShopProducts(): Promise<ShopProduct[]> {
     name: r.name,
     brand: r.brand,
     imageUrl: r.imageUrl ?? null,
+    categoryImageUrl: r.categoryImageUrl ?? null,
     price: Number(r.activePrice),
     category: r.categoryName ?? "Umum",
     categoryId: r.categoryId,
@@ -217,4 +225,5 @@ export async function deleteProduct(productId: string) {
   await requireAdmin();
   await db.delete(products).where(eq(products.id, productId));
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }

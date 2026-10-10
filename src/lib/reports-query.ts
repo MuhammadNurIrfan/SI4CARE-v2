@@ -70,6 +70,85 @@ function toDateStr(d: Date): string {
 
 // ─── Main action ──────────────────────────────────────────────────────────────
 
+/**
+ * Label ringkas isi transaksi ("Tensimeter ×2, Masker +1") untuk daftar transaksi.
+ * `outboundIds` = id transaksi POS/marketplace, `orderIds` = id pesanan web. Hasil dikunci per id.
+ */
+export async function getItemLabels(outboundIds: string[], orderIds: string[]): Promise<Record<string, string>> {
+  const labels: Record<string, string> = {};
+  const summarize = (rows: Array<{ key: string; name: string; qty: number }>) => {
+    const grp: Record<string, string[]> = {};
+    for (const it of rows) (grp[it.key] ??= []).push(`${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`);
+    for (const [k, v] of Object.entries(grp))
+      labels[k] = v.slice(0, 2).join(", ") + (v.length > 2 ? ` +${v.length - 2}` : "");
+  };
+
+  if (outboundIds.length > 0) {
+    const items = await db.select({ key: outboundItems.transactionId, name: outboundItems.productName, qty: outboundItems.quantity })
+      .from(outboundItems).where(inArray(outboundItems.transactionId, outboundIds));
+    summarize(items);
+  }
+  if (orderIds.length > 0) {
+    const items = await db.select({ key: orderItems.orderId, name: orderItems.productName, qty: orderItems.quantity })
+      .from(orderItems).where(inArray(orderItems.orderId, orderIds));
+    summarize(items.map((i) => ({ key: i.key as string, name: i.name, qty: i.qty })));
+  }
+  return labels;
+}
+
+/**
+ * Beban MDR / biaya platform per metode bayar (POS) dan per platform (marketplace) dalam satu periode.
+ * Diekspor agar dashboard memakai query yang sama dengan halaman Laporan.
+ */
+export async function getMdrRows(dateFrom: string, dateTo: string): Promise<MdrRow[]> {
+  const [mdrPosRaw, mdrMpRaw] = await Promise.all([
+    db.select({
+      pm: outboundTransactions.paymentMethod,
+      vol: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+      totalAmount: sql<string>`CAST(SUM(${outboundTransactions.totalAmount}) AS TEXT)`,
+      mdrAmount:   sql<string>`CAST(SUM(${outboundTransactions.mdrAmount}) AS TEXT)`,
+    }).from(outboundTransactions)
+      .where(and(
+        eq(outboundTransactions.channel, "pos"),
+        gte(sql`(${outboundTransactions.createdAt})::date`, dateFrom),
+        lte(sql`(${outboundTransactions.createdAt})::date`, dateTo),
+      ))
+      .groupBy(outboundTransactions.paymentMethod),
+
+    db.select({
+      platform: outboundTransactions.platform,
+      vol: sql<number>`CAST(COUNT(*) AS INTEGER)`,
+      totalAmount: sql<string>`CAST(SUM(${outboundTransactions.totalAmount}) AS TEXT)`,
+      fees:        sql<string>`CAST(SUM(${outboundTransactions.totalAmount} - ${outboundTransactions.netAmount}) AS TEXT)`,
+    }).from(outboundTransactions)
+      .where(and(
+        eq(outboundTransactions.channel, "marketplace"),
+        eq(outboundTransactions.status, "completed"),
+        gte(sql`(${outboundTransactions.createdAt})::date`, dateFrom),
+        lte(sql`(${outboundTransactions.createdAt})::date`, dateTo),
+      ))
+      .groupBy(outboundTransactions.platform),
+  ]);
+
+  return [
+    ...mdrPosRaw.filter(r => r.pm).map(r => ({
+      metode: METHOD_LABELS[r.pm!] ?? r.pm!,
+      vol: r.vol, totalAmount: parseFloat(r.totalAmount || "0"),
+      mdrAmount: parseFloat(r.mdrAmount || "0"), mdrRate: MDR_RATES[r.pm!] ?? 0,
+    })),
+    ...mdrMpRaw.filter(r => r.platform).map(r => {
+      const total = parseFloat(r.totalAmount || "0");
+      const fees  = parseFloat(r.fees || "0");
+      return {
+        metode: r.platform!.charAt(0).toUpperCase() + r.platform!.slice(1),
+        vol: r.vol, totalAmount: total, mdrAmount: fees,
+        mdrRate: total > 0 ? Math.round((fees / total) * 1000) / 10 : 0,
+        isMarketplace: true,
+      };
+    }),
+  ];
+}
+
 export async function buildReportData(
   dateFrom: string,
   dateTo: string,
@@ -200,26 +279,10 @@ export async function buildReportData(
     .orderBy(desc(ledgerEntries.createdAt))
     .limit(100);
 
-  const posMpRefIds = ledgerRaw.filter(r => r.channel !== "web").map(r => r.referenceId);
-  const webRefIds   = ledgerRaw.filter(r => r.channel === "web").map(r => r.referenceId);
-  const prodMap: Record<string, string> = {};
-
-  if (posMpRefIds.length > 0) {
-    const items = await db.select({ txId: outboundItems.transactionId, name: outboundItems.productName, qty: outboundItems.quantity })
-      .from(outboundItems).where(inArray(outboundItems.transactionId, posMpRefIds));
-    const grp: Record<string, string[]> = {};
-    for (const it of items) (grp[it.txId] ??= []).push(`${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`);
-    for (const [k, v] of Object.entries(grp))
-      prodMap[k] = v.slice(0, 2).join(", ") + (v.length > 2 ? ` +${v.length - 2}` : "");
-  }
-  if (webRefIds.length > 0) {
-    const items = await db.select({ ordId: orderItems.orderId, name: orderItems.productName, qty: orderItems.quantity })
-      .from(orderItems).where(inArray(orderItems.orderId, webRefIds));
-    const grp: Record<string, string[]> = {};
-    for (const it of items) (grp[it.ordId] ??= []).push(`${it.name}${it.qty > 1 ? ` ×${it.qty}` : ""}`);
-    for (const [k, v] of Object.entries(grp))
-      prodMap[k] = v.slice(0, 2).join(", ") + (v.length > 2 ? ` +${v.length - 2}` : "");
-  }
+  const prodMap = await getItemLabels(
+    ledgerRaw.filter(r => r.channel !== "web").map(r => r.referenceId),
+    ledgerRaw.filter(r => r.channel === "web").map(r => r.referenceId),
+  );
 
   const ledgerRows: ReportLedgerRow[] = ledgerRaw.map(r => {
     const d = new Date(r.entryDate + "T12:00:00");
@@ -232,52 +295,7 @@ export async function buildReportData(
   });
 
   // ── 6. MDR per metode pembayaran ──────────────────────────────────────────
-  const [mdrPosRaw, mdrMpRaw] = await Promise.all([
-    db.select({
-      pm: outboundTransactions.paymentMethod,
-      vol: sql<number>`CAST(COUNT(*) AS INTEGER)`,
-      totalAmount: sql<string>`CAST(SUM(${outboundTransactions.totalAmount}) AS TEXT)`,
-      mdrAmount:   sql<string>`CAST(SUM(${outboundTransactions.mdrAmount}) AS TEXT)`,
-    }).from(outboundTransactions)
-      .where(and(
-        eq(outboundTransactions.channel, "pos"),
-        gte(sql`(${outboundTransactions.createdAt})::date`, dateFrom),
-        lte(sql`(${outboundTransactions.createdAt})::date`, dateTo),
-      ))
-      .groupBy(outboundTransactions.paymentMethod),
-
-    db.select({
-      platform: outboundTransactions.platform,
-      vol: sql<number>`CAST(COUNT(*) AS INTEGER)`,
-      totalAmount: sql<string>`CAST(SUM(${outboundTransactions.totalAmount}) AS TEXT)`,
-      fees:        sql<string>`CAST(SUM(${outboundTransactions.totalAmount} - ${outboundTransactions.netAmount}) AS TEXT)`,
-    }).from(outboundTransactions)
-      .where(and(
-        eq(outboundTransactions.channel, "marketplace"),
-        eq(outboundTransactions.status, "completed"),
-        gte(sql`(${outboundTransactions.createdAt})::date`, dateFrom),
-        lte(sql`(${outboundTransactions.createdAt})::date`, dateTo),
-      ))
-      .groupBy(outboundTransactions.platform),
-  ]);
-
-  const mdrRows: MdrRow[] = [
-    ...mdrPosRaw.filter(r => r.pm).map(r => ({
-      metode: METHOD_LABELS[r.pm!] ?? r.pm!,
-      vol: r.vol, totalAmount: parseFloat(r.totalAmount || "0"),
-      mdrAmount: parseFloat(r.mdrAmount || "0"), mdrRate: MDR_RATES[r.pm!] ?? 0,
-    })),
-    ...mdrMpRaw.filter(r => r.platform).map(r => {
-      const total = parseFloat(r.totalAmount || "0");
-      const fees  = parseFloat(r.fees || "0");
-      return {
-        metode: r.platform!.charAt(0).toUpperCase() + r.platform!.slice(1),
-        vol: r.vol, totalAmount: total, mdrAmount: fees,
-        mdrRate: total > 0 ? Math.round((fees / total) * 1000) / 10 : 0,
-        isMarketplace: true,
-      };
-    }),
-  ];
+  const mdrRows = await getMdrRows(dateFrom, dateTo);
 
   // ── 7. Riil vs Pending ───────────────────────────────────────────────────
   const [riilRaw, pendRaw] = await Promise.all([

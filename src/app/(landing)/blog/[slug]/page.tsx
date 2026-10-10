@@ -9,6 +9,9 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://si4care.id";
 
 type Params = { slug: string };
 
+// ISR: data dari DB. Tanpa ini halaman dirender statis saat build dan tak pernah berubah sampai deploy ulang.
+export const revalidate = 60;
+
 export async function generateStaticParams(): Promise<Params[]> {
   const articles = await getPublishedArticles();
   return articles.map((a) => ({ slug: a.slug }));

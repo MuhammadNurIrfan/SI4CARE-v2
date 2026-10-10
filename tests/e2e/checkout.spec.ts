@@ -34,7 +34,7 @@ async function loginAs(page: Page, email: string, password: string) {
 async function addProductToCart(page: Page, query?: string) {
   await page.goto("/shop");
   if (query) {
-    await page.getByPlaceholder(/cari produk/i).fill(query);
+    await searchBox(page).fill(query);
   }
   const addBtn = page.getByRole("button", { name: /^tambah$/i }).first();
   await expect(addBtn).toBeVisible({ timeout: 8_000 });
@@ -43,6 +43,11 @@ async function addProductToCart(page: Page, query?: string) {
   // pindah halaman terlalu cepat bisa kehilangan item.
   await expect(page.getByRole("button", { name: /ditambahkan/i }).first()).toBeVisible({ timeout: 5_000 });
 }
+
+
+/** Kotak cari /shop. Di mobile ada dua kotak (panel filter di-mount lewat portal) — ambil yang terlihat,
+ *  kalau tidak locator kena strict-mode violation pada saat portal sudah terpasang. */
+const searchBox = (page: Page) => page.getByPlaceholder(/cari produk/i).filter({ visible: true }).first();
 
 // ── Kontrol akses ─────────────────────────────────────────────────────────────
 // Harus di describe sendiri tanpa beforeEach: kalau tidak, sesi sudah terpasang

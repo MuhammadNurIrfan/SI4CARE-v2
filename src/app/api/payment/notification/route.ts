@@ -4,6 +4,9 @@ import { createHash } from "crypto";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { orders, orderItems, batches } from "@/lib/db/schema";
+import { recordLedgerOnce, ledgerDate } from "@/lib/ledger";
+import { computeWebLedger } from "@/lib/ledger-calc";
+import { revalidateStorefront } from "@/lib/revalidate";
 
 type MidtransNotification = {
   order_id: string;
@@ -63,37 +66,54 @@ export async function POST(req: NextRequest) {
   }
 
   if (isPaymentSuccess(body)) {
-    const items = await db
-      .select()
-      .from(orderItems)
-      .where(eq(orderItems.orderId, order.id));
+    // Satu transaksi untuk: klaim order, potong stok, catat ledger. Sebelumnya stok dipotong
+    // lebih dulu dan status order diubah belakangan — bila proses mati di antaranya, Midtrans
+    // mengirim ulang webhook dan stok terpotong DUA kali.
+    const processed = await db.transaction(async (tx) => {
+      // Klaim atomik: dari beberapa pengiriman webhook yang bersamaan, hanya satu yang lolos.
+      const [claimed] = await tx
+        .update(orders)
+        .set({
+          status: "paid",
+          paymentMethod: body.payment_type ?? null,
+          paidAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(eq(orders.id, order.id), eq(orders.status, "pending_payment")))
+        .returning({ id: orders.id });
+      if (!claimed) return false;
 
-    for (const item of items) {
-      const allocations = (item.batchAllocations ?? []) as {
-        batchId: string;
-        qty: number;
-        hpp: number;
-      }[];
+      const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, order.id));
 
-      for (const alloc of allocations) {
-        // Drizzle sql`` tag — nilai alloc.qty dan alloc.batchId di-bind sebagai
-        // prepared-statement parameter, bukan diinterpolasi ke string SQL.
-        await db
-          .update(batches)
-          .set({ remaining: sql`${batches.remaining} - ${alloc.qty}` })
-          .where(and(eq(batches.id, alloc.batchId), gte(batches.remaining, alloc.qty)));
+      for (const item of items) {
+        const allocations = (item.batchAllocations ?? []) as { batchId: string; qty: number; hpp: number }[];
+        for (const alloc of allocations) {
+          // Drizzle sql`` tag — alloc.qty dan alloc.batchId di-bind sebagai parameter, bukan diinterpolasi.
+          const updated = await tx
+            .update(batches)
+            .set({ remaining: sql`${batches.remaining} - ${alloc.qty}` })
+            .where(and(eq(batches.id, alloc.batchId), gte(batches.remaining, alloc.qty)))
+            .returning({ id: batches.id });
+          if (updated.length === 0) {
+            // Pembayaran sudah sukses di Midtrans, jadi order tetap "paid" (me-rollback hanya membuat
+            // Midtrans mengirim ulang tanpa akhir). Tapi stok batch tak cukup → perlu ditindaklanjuti admin.
+            console.warn(`[payment] stok batch ${alloc.batchId} tidak cukup untuk order ${order.id} (butuh ${alloc.qty})`);
+          }
+        }
       }
-    }
 
-    await db
-      .update(orders)
-      .set({
-        status: "paid",
-        paymentMethod: body.payment_type ?? null,
-        paidAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(orders.id, order.id));
+      await recordLedgerOnce(tx, {
+        channel: "web",
+        referenceId: order.id,
+        refNumber: order.midtransOrderId ?? order.id,
+        entryDate: ledgerDate(),
+        ...computeWebLedger(order, items),
+      });
+      return true;
+    });
+
+    if (!processed) return NextResponse.json({ ok: true, skipped: true });
+    revalidateStorefront(); // stok berubah → etalase publik
   } else if (isPaymentFailed(body)) {
     await db
       .update(orders)

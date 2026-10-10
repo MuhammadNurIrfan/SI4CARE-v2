@@ -17,14 +17,15 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Save, Store, Bell, Shield, Printer, Receipt, Usb, Bluetooth, Wifi, Plug, CheckCircle2 } from "lucide-react";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
 
   // Toko
   const [namaToko, setNamaToko] = useState("Si4Care Medical Supply");
-  const [alamat, setAlamat] = useState("Jl. Kesehatan No. 123, Jakarta Selatan");
-  const [telepon, setTelepon] = useState("+62 812 3456 7890");
+  const [alamat, setAlamat] = useState<string>(SITE_CONFIG.address);
+  const [telepon, setTelepon] = useState<string>(SITE_CONFIG.phone);
   const [email, setEmail] = useState("admin@si4care.id");
 
   // Notifikasi
@@ -262,7 +263,7 @@ export default function SettingsPage() {
               <div className={`rounded-lg border bg-white p-4 font-mono text-[10px] text-black shadow-sm ${paperSize === "58" ? "w-40" : paperSize === "80" ? "w-52" : "w-full"}`}>
                 {showLogo && <div className="mx-auto mb-1 h-6 w-6 rounded bg-primary/15" />}
                 <p className="text-center text-xs font-bold">{headerLine}</p>
-                <p className="text-center text-[9px]">Jl. Kesehatan No. 123, Jakarta</p>
+                <p className="text-center text-[9px]">{SITE_CONFIG.addressShort}</p>
                 <div className="my-1.5 border-t border-dashed" />
                 <div className="flex justify-between text-[9px]"><span>POS-000123</span><span>06/06/26</span></div>
                 {showCashier && <p className="text-[9px]">Kasir: Admin</p>}

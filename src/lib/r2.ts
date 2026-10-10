@@ -1,12 +1,17 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 // Cloudflare R2 (S3-compatible).
-// Semua env vars opsional — jika tidak dikonfigurasi, upload fallback ke public/uploads/ lokal.
-const R2_ENDPOINT   = process.env.R2_ENDPOINT;    // https://<account-id>.r2.cloudflarestorage.com
-const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID;
-const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY;
-const R2_BUCKET     = process.env.R2_BUCKET_NAME ?? "si4care";
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL;  // https://cdn.example.com atau https://pub-xxx.r2.dev
+// Semua env vars opsional — jika tidak dikonfigurasi, upload fallback ke public/uploads/ (hanya lokal;
+// di production route upload menolak dengan 503, lihat api/upload/route.ts).
+//
+// Nama kanonik sama dengan .env.example: R2_ACCESS_KEY dan R2_SECRET_KEY. Nama gaya AWS
+// (R2_ACCESS_KEY_ID / R2_SECRET_ACCESS_KEY) tetap diterima. Dulu HANYA nama AWS yang dibaca,
+// sehingga `.env` yang diisi sesuai dokumentasi membuat r2Configured diam-diam false.
+const R2_ENDPOINT   = process.env.R2_ENDPOINT || undefined; // https://<account-id>.r2.cloudflarestorage.com
+const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY || process.env.R2_ACCESS_KEY_ID || undefined;
+const R2_SECRET_KEY = process.env.R2_SECRET_KEY || process.env.R2_SECRET_ACCESS_KEY || undefined;
+const R2_BUCKET     = process.env.R2_BUCKET_NAME || "si4care";
+const R2_PUBLIC_URL = (process.env.R2_PUBLIC_URL || undefined)?.replace(/\/+$/, ""); // https://cdn.example.com atau https://pub-xxx.r2.dev
 
 export const r2Configured =
   !!(R2_ENDPOINT && R2_ACCESS_KEY && R2_SECRET_KEY && R2_PUBLIC_URL);

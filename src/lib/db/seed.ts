@@ -8,7 +8,7 @@ import { randomUUID } from "crypto";
 import { eq } from "drizzle-orm";
 import { hashPassword } from "@better-auth/utils/password";
 import { db } from "./index";
-import { categories, products, variants, batches, vouchers, contentSections } from "./schema";
+import { categories, products, variants, batches, vouchers, contentSections, articles } from "./schema";
 import { user, account } from "./auth-schema";
 import type { ContentData } from "@/actions/content";
 
@@ -235,7 +235,7 @@ async function upsertContentSections() {
     cta: {
       kicker: "Mulai belanja sekarang",
       judul: "Kebutuhan alat kesehatan Anda, ada di sini.",
-      subjudul: "Dari tensimeter untuk keluarga hingga peralatan klinik — lebih dari 500 produk alkes original siap dikirim ke seluruh Indonesia.",
+      subjudul: "Dari tensimeter untuk keluarga hingga peralatan klinik — alat kesehatan original dan bergaransi resmi siap dikirim ke seluruh Indonesia.",
       tombolUtama: "Belanja Sekarang",
       tombolSekunder: "Konsultasi Gratis",
     },
@@ -254,6 +254,143 @@ async function upsertContentSections() {
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────
+
+// ─── Artikel blog contoh ─────────────────────────────────────────────────────
+// Konten contoh agar blog dan bagian "Artikel" di landing tidak kosong saat demo.
+// Isinya panduan umum, bukan nasihat medis. GANTI dengan tulisan asli lewat /admin/content.
+// Artikel seed lama dulu dimasukkan langsung ke XAMPP dan tidak pernah tercatat di repo,
+// sehingga hilang saat pindah ke PostgreSQL.
+
+const SEED_ARTICLES = [
+  {
+    id: "article-seed-0001",
+    slug: "cara-memilih-tensimeter-digital-yang-akurat-untuk-di-rumah",
+    title: "Cara memilih tensimeter digital yang akurat untuk di rumah",
+    category: "Panduan",
+    excerpt: "Lengan vs. pergelangan, ukuran manset, dan fitur yang benar-benar penting saat memantau tekanan darah.",
+    metaDescription: "Panduan memilih tensimeter digital untuk di rumah: tipe lengan atas atau pergelangan, ukuran manset, dan fitur yang perlu diperhatikan.",
+    daysAgo: 21,
+    body: `Memantau tekanan darah secara rutin di rumah membantu Anda dan dokter melihat pola harian yang tidak selalu tertangkap saat kunjungan singkat ke klinik. Hasilnya hanya berguna jika alatnya tepat dan cara memakainya benar.
+
+## Lengan atas atau pergelangan tangan?
+
+Tensimeter lengan atas umumnya lebih direkomendasikan karena hasilnya lebih konsisten. Tensimeter pergelangan lebih ringkas, tetapi hasilnya sangat dipengaruhi posisi tangan saat mengukur.
+
+- Lengan atas: pilihan utama untuk pemakaian rutin di rumah.
+- Pergelangan: bisa dipertimbangkan jika lengan sulit dipasangi manset, dengan syarat posisi tangan sejajar jantung.
+
+## Pastikan ukuran manset sesuai
+
+Ukuran manset yang tidak pas adalah sumber ketidakakuratan yang paling sering terlewat. Manset yang terlalu kecil cenderung membuat hasil lebih tinggi dari sebenarnya, dan yang terlalu besar membuatnya lebih rendah. Ukur lingkar lengan atas Anda, lalu cocokkan dengan rentang ukuran yang tertera pada kemasan.
+
+## Fitur yang perlu diperhatikan
+
+- Izin edar dari Kemenkes dan garansi resmi.
+- Memori pengukuran untuk melihat riwayat.
+- Indikator detak jantung tidak beraturan.
+- Sumber daya: baterai, adaptor, atau keduanya.
+
+## Tips mengukur di rumah
+
+Duduk tenang selama sekitar lima menit dengan punggung bersandar dan kaki menapak lantai. Letakkan lengan sejajar jantung, hindari kafein dan merokok setidaknya 30 menit sebelumnya, lalu ambil dua kali pengukuran dengan jeda satu menit.
+
+Tensimeter rumah membantu pemantauan, bukan pengganti pemeriksaan. Konsultasikan hasil Anda dengan dokter sebelum mengambil keputusan terkait pengobatan.`,
+  },
+  {
+    id: "article-seed-0002",
+    slug: "menyimpan-dan-merawat-alat-kesehatan-agar-awet-dan-higienis",
+    title: "Menyimpan & merawat alat kesehatan agar awet dan higienis",
+    category: "Kesehatan",
+    excerpt: "Tips sederhana menjaga nebulizer, oximeter, dan termometer tetap berfungsi optimal.",
+    metaDescription: "Cara menyimpan dan merawat nebulizer, pulse oximeter, dan termometer agar tahan lama dan tetap higienis.",
+    daysAgo: 14,
+    body: `Alat kesehatan rumah tangga bekerja paling baik jika dirawat dengan benar. Perawatan yang sederhana memperpanjang umur alat sekaligus menjaga kebersihannya, terutama untuk alat yang bersentuhan langsung dengan tubuh.
+
+## Prinsip umum
+
+- Baca buku panduan dan ikuti petunjuk pembersihan dari pabrik. Cara membersihkan setiap alat berbeda.
+- Simpan di tempat kering, sejuk, dan jauh dari sinar matahari langsung.
+- Lepas baterai jika alat tidak dipakai dalam waktu lama agar tidak bocor dan merusak komponen.
+- Simpan kemasan asli dan kartu garansi.
+
+## Nebulizer
+
+Bagian yang bersentuhan dengan obat dan napas, seperti masker dan wadah obat, perlu dibersihkan setelah setiap pemakaian sesuai petunjuk pabrik. Keringkan sampai benar-benar kering sebelum disimpan, dan ganti masker serta filter sesuai interval yang dianjurkan.
+
+## Pulse oximeter
+
+Bersihkan bagian penjepit yang menyentuh jari dengan kain lembut atau tisu pembersih yang sesuai petunjuk. Hindari merendam alat dalam cairan.
+
+## Termometer
+
+Bersihkan ujung sensor setelah dipakai, terutama jika digunakan bergantian oleh beberapa orang. Untuk termometer inframerah, jaga lensa sensor tetap bersih dan bebas goresan.
+
+## Kapan perlu diperiksa
+
+Jika hasil pengukuran terasa tidak wajar, periksa baterai dan cara pemakaian lebih dulu. Bila masalah berlanjut, hubungi layanan garansi resmi merek tersebut.`,
+  },
+  {
+    id: "article-seed-0003",
+    slug: "checklist-perlengkapan-medis-dasar-untuk-klinik-pratama",
+    title: "Checklist perlengkapan medis dasar untuk klinik pratama",
+    category: "Klinik",
+    excerpt: "Daftar alat diagnostik dan habis pakai yang wajib tersedia untuk operasional klinik pratama.",
+    metaDescription: "Checklist perlengkapan medis dasar untuk klinik pratama: alat diagnostik, bahan habis pakai, dan pelindung diri.",
+    daysAgo: 7,
+    body: `Menyiapkan klinik pratama berarti memastikan perlengkapan dasar tersedia sebelum pasien pertama datang. Daftar berikut adalah titik awal yang umum, bukan pengganti ketentuan resmi.
+
+## Alat diagnostik
+
+- Tensimeter dan stetoskop
+- Termometer
+- Pulse oximeter
+- Timbangan dan alat ukur tinggi badan
+
+## Bahan habis pakai
+
+- Kasa, plester, dan perban
+- Alcohol swab dan cairan antiseptik
+- Spuit dan jarum sekali pakai
+- Wadah limbah benda tajam (safety box)
+
+## Alat pelindung diri
+
+- Masker medis
+- Sarung tangan sekali pakai
+- Pelindung wajah atau kacamata pelindung sesuai kebutuhan
+
+## Hal yang sering terlupa
+
+Atur pencatatan stok dan tanggal kedaluwarsa sejak awal. Bahan habis pakai dengan masa kedaluwarsa sebaiknya dipakai dengan prinsip yang kedaluwarsa lebih dulu keluar lebih dulu, agar tidak ada yang terbuang.
+
+Kebutuhan lengkap bergantung pada jenis layanan yang diberikan. Selalu sesuaikan dengan ketentuan Kementerian Kesehatan dan dinas kesehatan setempat.`,
+  },
+];
+
+async function upsertArticles() {
+  const existing = await db.select({ slug: articles.slug }).from(articles);
+  const have = new Set(existing.map((a) => a.slug));
+  let added = 0;
+  for (const a of SEED_ARTICLES) {
+    if (have.has(a.slug)) continue;
+    const publishedAt = new Date();
+    publishedAt.setDate(publishedAt.getDate() - a.daysAgo);
+    await db.insert(articles).values({
+      id: a.id,
+      slug: a.slug,
+      title: a.title,
+      category: a.category,
+      excerpt: a.excerpt,
+      body: a.body,
+      metaTitle: a.title.slice(0, 70),
+      metaDescription: a.metaDescription,
+      status: "terbit",
+      publishedAt,
+    });
+    added++;
+  }
+  console.log(added > 0 ? `  ✓ ${added} artikel contoh ditambahkan` : "  ✓ Artikel sudah ada — skip");
+}
 
 async function seed() {
   console.log("\n🌱 Memulai seeding database...\n");
@@ -332,6 +469,9 @@ async function seed() {
   await upsertContentSections();
 
   // ── Voucher demo ──────────────────────────────────────────────────────────
+  console.log("\n📰 Artikel:");
+  await upsertArticles();
+
   console.log("\n🎟️  Voucher:");
   await upsertVoucher("SEHAT10", { type: "percent", value: 10, minOrder: 100000, maxDiscount: 50000 });
   await upsertVoucher("ALKES5",  { type: "percent", value: 5,  minOrder: 50000 });

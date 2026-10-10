@@ -39,6 +39,8 @@ export type PosProduct = {
   name: string;
   brand: string | null;
   category: string;
+  /** Foto kategori dari DB (null = belum ada). */
+  categoryImage: string | null;
   stock: number;
   stockMode: "fifo" | "fefo";
 };
@@ -54,6 +56,7 @@ export async function getPosProducts(): Promise<PosProduct[]> {
       name: products.name,
       brand: products.brand,
       category: categories.name,
+      categoryImage: categories.imageUrl,
       stock: sql<number>`COALESCE(SUM(${batches.remaining}), 0)`,
       avgHpp: sql<string>`COALESCE(
         SUM(${batches.hpp} * ${batches.remaining}) / NULLIF(SUM(${batches.remaining}), 0),
@@ -67,7 +70,7 @@ export async function getPosProducts(): Promise<PosProduct[]> {
     .where(and(eq(variants.isActive, true), eq(products.isActive, true)))
     .groupBy(
       variants.id, variants.sku, variants.barcode, variants.activePrice,
-      variants.stockMode, products.name, products.brand, categories.name,
+      variants.stockMode, products.name, products.brand, categories.name, categories.imageUrl,
     )
     .orderBy(products.name, variants.sku);
 
@@ -80,6 +83,7 @@ export async function getPosProducts(): Promise<PosProduct[]> {
     name: r.name,
     brand: r.brand,
     category: r.category ?? "Lainnya",
+    categoryImage: r.categoryImage ?? null,
     stock: Number(r.stock),
     stockMode: r.stockMode,
   }));

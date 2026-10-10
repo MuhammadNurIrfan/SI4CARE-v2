@@ -12,8 +12,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Save, Plus, Trash2 } from "lucide-react";
-import { SECTION_META } from "@/context/ContentContext";
-import type { HeroContent, CtaContent, Testimoni, FaqItem } from "@/context/ContentContext";
+import { SECTION_META } from "@/lib/content-defaults";
+import type { HeroContent, CtaContent, Testimoni, FaqItem } from "@/lib/content-defaults";
 
 type LandingEditorClientProps = {
   initialContent: ContentData;

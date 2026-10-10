@@ -3,8 +3,6 @@
 import { ReactNode } from "react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CartProvider } from "@/context/CartContext";
-import { CategoryProvider } from "@/context/CategoryContext";
-import { ContentProvider } from "@/context/ContentContext";
 
 // Catatan: Lenis (smooth-scroll JS) sebelumnya membungkus root di sini, tapi
 // menghijack scroll <html> secara global sehingga: (a) container scroll bersarang
@@ -15,13 +13,9 @@ import { ContentProvider } from "@/context/ContentContext";
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <TooltipProvider>
-      <CategoryProvider>
-        <ContentProvider>
-          <CartProvider>
-            {children}
-          </CartProvider>
-        </ContentProvider>
-      </CategoryProvider>
+      <CartProvider>
+        {children}
+      </CartProvider>
     </TooltipProvider>
   );
 }

@@ -59,6 +59,35 @@ test.describe("Back-office — halaman utama", () => {
     await expect(visibleText(page, /Rp/)).toBeVisible({ timeout: 20_000 });
   });
 
+  test("dashboard menampilkan angka dari DB, bukan data contoh", async ({ page }) => {
+    await page.goto("/admin");
+    await expect(heading(page, /dashboard/i)).toBeVisible({ timeout: 20_000 });
+    // Data contoh lama: omzet total Rp189.000.000 dan stetoskop yang tak ada di toko.
+    await expect(page.getByText(/189\.000\.000/)).toHaveCount(0);
+    await expect(page.getByText(/littmann classic/i)).toHaveCount(0);
+    // Ringkasan stok nyata: 8 produk aktif di seed.
+    await expect(visibleText(page, /total produk/i)).toBeVisible();
+  });
+
+  test("dashboard: ganti periode memuat ulang data dari server", async ({ page }) => {
+    await page.goto("/admin");
+    await expect(heading(page, /dashboard/i)).toBeVisible({ timeout: 20_000 });
+    await page.getByRole("combobox").first().click();
+    await page.getByRole("option", { name: "Tahun Ini" }).click();
+    await expect(page).toHaveURL(/period=tahun/, { timeout: 10_000 });
+    await expect(page.getByText(/tahun ini/i).first()).toBeVisible();
+  });
+
+  test("dashboard: tombol Ekspor mengunduh CSV", async ({ page }) => {
+    await page.goto("/admin");
+    await expect(heading(page, /dashboard/i)).toBeVisible({ timeout: 20_000 });
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: /ekspor/i }).click(),
+    ]);
+    expect(download.suggestedFilename()).toMatch(/^dashboard-si4care-.*\.csv$/);
+  });
+
   test("alarm stok tampil tanpa error", async ({ page }) => {
     await page.goto("/admin/alarms");
     await expect(heading(page, /alarm/i)).toBeVisible({ timeout: 10_000 });

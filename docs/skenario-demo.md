@@ -3,7 +3,7 @@
 Panduan presentasi ke klien. Urutannya disusun supaya tiap langkah memakai hasil langkah sebelumnya,
 jadi ceritanya menyambung dan tidak ada layar kosong.
 
-**Durasi:** ±15 menit · **Terakhir diuji:** 2026-10-09
+**Durasi:** ±15 menit · **Terakhir diuji:** 2026-10-11 (data demo; dev server dan build production)
 
 ---
 
@@ -11,7 +11,7 @@ jadi ceritanya menyambung dan tidak ada layar kosong.
 
 | # | Langkah | Perintah / catatan |
 |---|---|---|
-| 1 | **Pakai jaringan yang tidak memblokir port 5432** | Sebagian ISP Indonesia memblokir port PostgreSQL. Tethering HP sudah terbukti jalan. Tanpa ini aplikasi tidak bisa jalan sama sekali. |
+| 1 | **Pakai jaringan yang tidak memblokir port 5432/6543** | Sebagian ISP Indonesia memblokir port PostgreSQL. Tethering HP sudah terbukti jalan. Tanpa ini aplikasi lokal tidak bisa jalan (situs di Vercel tidak terpengaruh — ia bukan di jaringanmu). |
 | 2 | Pastikan DB terjangkau | `psql "$DATABASE_URL" -c "select 1;"` — harus menjawab, bukan menggantung |
 | 3 | Siapkan data demo | `npm run db:seed` lalu `npm run db:seed:demo` (keduanya idempoten, aman diulang) |
 | 4 | **Bersihkan transaksi uji** | `npm run test:reports:clean` — kalau dilewat, 3 transaksi uji ikut muncul di Laporan |
@@ -30,7 +30,10 @@ jadi ceritanya menyambung dan tidak ada layar kosong.
 
 6 pesanan web (semua status: paid, processing, shipped, delivered, cancelled, pending) ·
 5 transaksi POS (tunai, QRIS, kartu kredit, transfer, kartu debit) ·
-3 transaksi marketplace (Tokopedia ×2, Shopee ×1) · 9 produk · 3 voucher.
+3 transaksi marketplace (Tokopedia ×2, Shopee ×1) · 8 produk aktif (9 varian) · 3 voucher · 3 artikel contoh.
+
+> Angka-angka ini **nyata**: dashboard, laporan, dan stok menghitungnya dari database. Jangan menjanjikan angka lain
+> (jumlah pelanggan, ulasan, dst.) — toko ini baru, dan fitur ulasan memang belum ada.
 
 ---
 
@@ -39,7 +42,9 @@ jadi ceritanya menyambung dan tidak ada layar kosong.
 1. Buka `/` — tunjukkan hero, kategori dengan ilustrasi SVG custom, produk unggulan.
 2. Buka `/shop` — **sebutkan bahwa produk ini datang dari database**, bukan data palsu.
 3. Pakai kotak cari: ketik `Nebulizer` → tinggal 1 produk.
-4. Klik produk → halaman detail.
+4. Klik produk → halaman detail. **Judul, harga, dan stok di sini adalah produk yang diklik** (dulu semua produk membuka halaman yang sama).
+   Pada produk bervarian (Tensimeter) tunjukkan pemilih varian — harga dan stok ikut berubah.
+5. Gulir `/` ke bawah: **Produk unggulan** dan **Artikel** juga datang dari database; klik satu artikel.
 
 > **Kalimat pembuka yang enak:** "Semua yang Bapak/Ibu lihat ini sudah tersambung ke database sungguhan —
 > stok, harga, dan pesanan bukan tampilan contoh."
@@ -112,12 +117,16 @@ Pindah ke jendela admin.
 
 ## 6. Laporan & alarm (2 menit)
 
-1. `/admin/reports` — pilih periode & channel.
+1. `/admin` (**Dashboard**) — ganti **Periode** ke *Tahun Ini* (data dihitung ulang di server), lihat rincian per kanal,
+   ringkasan stok, dan transaksi terkini; tombol **Ekspor** mengunduh CSV.
+   **Poin jualan:** laba bersih di sini tepat sama dengan jumlah margin di buku besar — dan MDR tidak terhitung dua kali.
+2. `/admin/reports` — pilih periode & channel.
    Tunjukkan KPI, grafik tren, produk terlaris, dan tabel MDR per metode bayar.
-   **Poin jualan:** angka ini dihitung langsung dari buku besar (ledger), bukan diketik manual.
-2. `/admin/alarms` — stok menipis, mendekati kadaluarsa, batch kadaluarsa, margin tipis.
+   **Poin jualan:** angka ini dihitung langsung dari buku besar (ledger), bukan diketik manual. Pesanan web yang dibayar dan
+   settlement marketplace otomatis masuk ledger.
+3. `/admin/alarms` — stok menipis, mendekati kadaluarsa, batch kadaluarsa, margin tipis.
    Data demo memang memuat satu batch masker N95 yang sudah kadaluarsa, jadi alarmnya nyata.
-3. Singgung juga: `/admin/marketplace` (rekonsiliasi settlement Tokopedia/Shopee) dan
+4. Singgung juga: `/admin/marketplace` (rekonsiliasi settlement Tokopedia/Shopee) dan
    `/admin/returns` (alur retur 5 tahap dengan karantina).
 
 ---
@@ -126,9 +135,13 @@ Pindah ke jendela admin.
 
 | Bagian | Alasan |
 |---|---|
-| **Edit konten di `/admin/content` lalu cek di halaman depan** | Editor menyimpan ke database, tapi halaman depan masih membaca dari `localStorage` browser — **perubahan tidak akan terlihat** pengunjung lain. Jalur baca belum dimigrasikan. Lihat `checklist.md` §7f. |
-| **Upload foto produk/kategori** | Jalan di lokal, tapi file tersimpan di `public/uploads/` yang tidak bisa ditulis di Vercel. Tunggu swap ke Cloudflare R2. |
-| **Webhook Midtrans di lokal tanpa ngrok** | Notifikasi pembayaran butuh URL publik. Pakai Midtrans Simulator atau tunggu versi yang sudah di-deploy. |
+| **Upload foto di situs Vercel** | Berhasil di lokal, tetapi di Vercel disk tidak bisa ditulis → ditolak (HTTP 503) sampai Cloudflare R2 dikonfigurasi (`docs/deploy-vercel.md`). Foto kategori yang diunggah **tampil di kartu produk**; di lokal aman didemokan |
+| **Pembayaran sampai status "Dibayar" di lokal** | Webhook Midtrans butuh URL publik. Di lokal pakai Midtrans Simulator, atau demokan dari situs yang sudah di-deploy (Payment Notification URL sudah diisi) |
+| **Halaman `/admin/settings`** | Hanya tampilan — tombol Simpan tidak menyimpan ke mana pun (`checklist.md` K1) |
+| **Testimoni di halaman depan** | Enam testimoni **contoh** (nama rekaan). Ganti dengan testimoni asli lewat `/admin/content` sebelum presentasi ke pihak luar |
+
+**Bisa didemokan (sebelumnya tidak):** edit teks hero di `/admin/content` lalu muat ulang halaman depan — perubahan
+muncul seketika (jalur baca CMS kini dari database).
 
 ---
 
@@ -140,4 +153,6 @@ Pindah ke jendela admin.
 | Voucher ditolak "minimum belanja" | Keranjang di bawah Rp100.000 | Tambah produk mahal (Nebulizer / Tensimeter) |
 | Katalog POS kosong | Seed belum jalan | `npm run db:seed` |
 | Laporan memuat angka aneh | Transaksi uji tertinggal | `npm run test:reports:clean` |
-| Ongkir tidak muncul | API Komerce Sandbox kadang kosong | Ada tabel ongkir cadangan; pilih opsi yang muncul saja |
+| Ongkir tampil 4 opsi dengan tarif bulat (15.000 / 40.000 / 18.000 / 14.000) | API Komerce tidak terjangkau atau kota tidak dikenal → tarif **cadangan** | Wajar untuk demo; periksa `KOMERCE_API_KEY` bila ingin tarif kurir nyata |
+| Dashboard berubah angka setelah transaksi uji | `test:*` meninggalkan data sebentar | `npm run test:reports:clean` |
+| Ada lencana merah "1 Issue" di kiri bawah (dev) | Indikator error Next dev | Sudah diperbaiki (CSP `unsafe-eval` hanya di dev); muat ulang bila muncul lagi |

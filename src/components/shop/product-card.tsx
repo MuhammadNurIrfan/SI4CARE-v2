@@ -6,8 +6,8 @@ import Image from "next/image";
 import { ShoppingCart, Heart, Star, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
-import { useCategories } from "@/context/CategoryContext";
 import { PRODUCT_ART, HeartPulseArt } from "@/app/(landing)/_components/illustrations";
+import { artKeyFor } from "@/lib/product-art";
 
 export interface Product {
   id: string;
@@ -15,6 +15,8 @@ export interface Product {
   name: string;
   price: number;
   imageUrl?: string | null;
+  /** Foto kategori (DB) — fallback bila produk belum punya foto. */
+  categoryImageUrl?: string | null;
   originalPrice?: number;
   category: string;
   stock: number;
@@ -29,7 +31,6 @@ const formatRupiah = (n: number) =>
 
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
-  const { getCategoryImage } = useCategories();
   const [added, setAdded] = useState(false);
   const [wished, setWished] = useState(false);
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -43,8 +44,8 @@ export function ProductCard({ product }: { product: Product }) {
     }
   }, []);
 
-  const categoryImage = getCategoryImage(product.category);
-  const Art = (product.art && PRODUCT_ART[product.art]) || HeartPulseArt;
+  const categoryImage = product.categoryImageUrl ?? "";
+  const Art = PRODUCT_ART[product.art ?? artKeyFor(product.name)] ?? HeartPulseArt;
   const out = product.stock === 0;
   const low = !out && product.stock <= 5;
   const discount = product.originalPrice
@@ -130,14 +131,19 @@ export function ProductCard({ product }: { product: Product }) {
           <h3 className="line-clamp-2 text-xs sm:text-base font-semibold leading-snug transition-colors group-hover:text-primary">{product.name}</h3>
         </Link>
 
-        {/* rating */}
-        <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
-          <span className="flex items-center gap-0.5 text-amber-500">
-            <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400" />
-            <span className="font-semibold text-foreground">{(product.rating ?? 4.8).toFixed(1)}</span>
-          </span>
-          <span className="truncate">· {product.sold ?? 0} terjual</span>
-        </div>
+        {/* Rating & jumlah terjual hanya tampil bila datanya ada. Belum ada fitur ulasan, dan dulu nilai
+            bawaan "4.8 · 0 terjual" tampil di SEMUA produk — rating karangan di toko yang nyata. */}
+        {(product.rating != null || (product.sold ?? 0) > 0) && (
+          <div className="mt-1 sm:mt-2 flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground">
+            {product.rating != null && (
+              <span className="flex items-center gap-0.5 text-amber-500">
+                <Star className="h-3 w-3 sm:h-3.5 sm:w-3.5 fill-amber-400 text-amber-400" />
+                <span className="font-semibold text-foreground">{product.rating.toFixed(1)}</span>
+              </span>
+            )}
+            {(product.sold ?? 0) > 0 && <span className="truncate">{product.rating != null ? "· " : ""}{product.sold} terjual</span>}
+          </div>
+        )}
 
         <div className="mt-1.5 sm:mt-3 mb-2 sm:mb-4 mt-auto flex flex-wrap items-baseline gap-x-1.5">
           {product.originalPrice && (

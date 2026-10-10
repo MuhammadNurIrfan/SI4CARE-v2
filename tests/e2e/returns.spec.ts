@@ -72,14 +72,14 @@ test.describe("Admin — Manajemen Retur", () => {
 
   test("filter status retur berfungsi", async ({ page }) => {
     await page.goto("/admin/returns");
-    const filterPending = page.getByRole("button", { name: /menunggu|pending/i });
-    if (await filterPending.isVisible({ timeout: 2_000 })) {
-      await filterPending.click();
-      await page.waitForTimeout(500);
-      await expect(page).not.toHaveURL(/error/);
-    } else {
-      test.skip();
-    }
+    // Jangan pakai `if (await x.isVisible()) ... else test.skip()`: isVisible() tidak menunggu dan
+    // mengabaikan opsi timeout, jadi bila halaman belum selesai dirender tes diam-diam di-skip.
+    const filterPending = page.getByRole("button", { name: /pending/i });
+    await expect(filterPending).toBeVisible({ timeout: 10_000 });
+    await filterPending.click();
+    // Kartu filter aktif ditandai border primary.
+    await expect(filterPending).toHaveClass(/border-primary/);
+    await expect(page).not.toHaveURL(/error/);
   });
 
   test("halaman admin/orders menampilkan daftar pesanan dari DB", async ({ page }) => {
@@ -91,11 +91,11 @@ test.describe("Admin — Manajemen Retur", () => {
 
   test("filter status pesanan admin berfungsi", async ({ page }) => {
     await page.goto("/admin/orders");
-    const pill = page.getByRole("button", { name: /pending|processing|semua/i }).first();
-    if (await pill.isVisible({ timeout: 3_000 })) {
-      await pill.click();
-      await page.waitForTimeout(300);
-      await expect(page).not.toHaveURL(/error/);
-    }
+    const pill = page.getByRole("button", { name: /menunggu bayar/i }).first();
+    await expect(pill).toBeVisible({ timeout: 10_000 });
+    await pill.click();
+    await expect(page).not.toHaveURL(/error/);
+    // Data demo memuat satu pesanan "Menunggu Bayar" — harus tetap terlihat setelah difilter.
+    await expect(page.getByText(/menunggu bayar/i).first()).toBeVisible();
   });
 });

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
 import { requireAdmin } from "@/lib/server-auth";
+import { calculateCost, getOriginId, resolveDestinationId } from "@/lib/komerce";
 
 // Admin-only endpoint — GET /api/shipping/test
-// Menguji konektivitas Komerce API dan Redis cache
-
-const KOMERCE_BASE = "https://merchant-api.komerce.id/api/v1";
-const STORE_ORIGIN = (process.env.KOMERCE_STORE_ORIGIN ?? "JAKARTA SELATAN").toUpperCase();
+// Menguji konektivitas Redis dan API Komerce. Sengaja memakai `redis` langsung
+// (bukan lib/cache) karena tugasnya melaporkan kegagalan, bukan menelannya.
 
 const TEST_DESTINATIONS = [
   "BANDUNG",
@@ -25,86 +24,64 @@ export async function GET() {
     return NextResponse.json({ error: "Akses ditolak" }, { status: 403 });
   }
 
-  const apiKey = process.env.KOMERCE_API_KEY;
   const report: Record<string, unknown> = {
     timestamp: new Date().toISOString(),
-    storeOrigin: STORE_ORIGIN,
-    apiKeyConfigured: !!apiKey,
+    apiKeyConfigured: Boolean(process.env.KOMERCE_API_KEY),
+    storeOrigin: process.env.KOMERCE_STORE_ORIGIN_ID
+      ? `ID ${process.env.KOMERCE_STORE_ORIGIN_ID}`
+      : process.env.KOMERCE_STORE_ORIGIN ?? "(default JAKARTA SELATAN)",
   };
 
-  // 1. Cek Redis
+  // 1. Redis
   try {
     const ping = await redis.set("__shipping_test__", "ok", { ex: 10 });
     const val = await redis.get("__shipping_test__");
     report.redis = { ok: ping === "OK" && val === "ok" };
   } catch (e) {
-    report.redis = { ok: false, error: String(e) };
+    report.redis = { ok: false, error: e instanceof Error ? `${e.message} (${String(e.cause ?? "")})` : String(e) };
   }
 
-  if (!apiKey) {
+  if (!process.env.KOMERCE_API_KEY) {
     report.komerce = { ok: false, error: "KOMERCE_API_KEY tidak dikonfigurasi" };
     return NextResponse.json(report);
   }
 
-  // 2. Cek satu call Komerce API (JNE ke Bandung)
-  try {
-    const t0 = Date.now();
-    const resp = await fetch(`${KOMERCE_BASE}/cost/domestic`, {
-      method: "POST",
-      headers: { key: apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        origin: STORE_ORIGIN,
-        destination: "BANDUNG",
-        weight: 1000,
-        courier: "jne",
-      }),
-      signal: AbortSignal.timeout(8000),
-      next: { revalidate: 0 },
-    });
-    const latencyMs = Date.now() - t0;
-    const json = (await resp.json()) as { meta?: { code?: number }; code?: number; data?: unknown };
-    const httpStatus = resp.status;
-    const apiCode = json.meta?.code ?? json.code;
-    report.komerce = {
-      ok: resp.ok && apiCode === 200,
-      httpStatus,
-      apiCode,
-      latencyMs,
-      hasData: Array.isArray(json.data) ? (json.data as unknown[]).length > 0 : false,
-    };
-  } catch (e) {
-    report.komerce = { ok: false, error: String(e) };
+  // 2. Asal toko → ID
+  const originId = await getOriginId();
+  report.originId = originId;
+  if (!originId) {
+    report.komerce = { ok: false, error: "Asal toko tidak bisa di-resolve ke ID Komerce" };
+    return NextResponse.json(report);
   }
 
-  // 3. Cek cakupan wilayah — uji beberapa kota serentak
-  const coverageResults = await Promise.allSettled(
+  // 3. Satu perhitungan ongkir (JNE ke Bandung)
+  try {
+    const t0 = Date.now();
+    const destId = await resolveDestinationId("BANDUNG");
+    if (!destId) throw new Error("tujuan BANDUNG tidak ditemukan");
+    const options = await calculateCost(originId, destId, 1000, "jne");
+    report.komerce = { ok: options.length > 0, latencyMs: Date.now() - t0, serviceCount: options.length };
+  } catch (e) {
+    report.komerce = { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+
+  // 4. Cakupan wilayah
+  const coverage = await Promise.allSettled(
     TEST_DESTINATIONS.map(async (dest) => {
-      const resp = await fetch(`${KOMERCE_BASE}/cost/domestic`, {
-        method: "POST",
-        headers: { key: apiKey, "Content-Type": "application/json" },
-        body: JSON.stringify({ origin: STORE_ORIGIN, destination: dest, weight: 1000, courier: "jne" }),
-        signal: AbortSignal.timeout(10000),
-        next: { revalidate: 0 },
-      });
-      const json = (await resp.json()) as { meta?: { code?: number }; code?: number; data?: unknown[] };
-      const apiCode = json.meta?.code ?? json.code;
-      return {
-        destination: dest,
-        ok: resp.ok && apiCode === 200 && Array.isArray(json.data) && json.data.length > 0,
-        httpStatus: resp.status,
-        serviceCount: Array.isArray(json.data) ? json.data.length : 0,
-      };
+      const destId = await resolveDestinationId(dest);
+      if (!destId) return { destination: dest, ok: false, serviceCount: 0 };
+      const options = await calculateCost(originId, destId, 1000, "jne");
+      return { destination: dest, ok: options.length > 0, serviceCount: options.length };
     }),
   );
 
-  report.coverage = coverageResults.map((r, i) =>
+  report.coverage = coverage.map((r, i) =>
     r.status === "fulfilled"
       ? r.value
-      : { destination: TEST_DESTINATIONS[i], ok: false, error: r.reason },
+      : { destination: TEST_DESTINATIONS[i], ok: false, error: r.reason instanceof Error ? r.reason.message : String(r.reason) },
   );
-
-  const coveredCount = (report.coverage as { ok: boolean }[]).filter((c) => c.ok).length;
-  report.coverageSummary = `${coveredCount}/${TEST_DESTINATIONS.length} kota tercakup`;
+  const covered = (report.coverage as { ok: boolean }[]).filter((c) => c.ok).length;
+  report.coverageSummary = `${covered}/${TEST_DESTINATIONS.length} kota tercakup`;
 
   return NextResponse.json(report);
 }

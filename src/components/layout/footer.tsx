@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { MapPin, Phone, Mail } from "lucide-react";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 export function Footer() {
   return (
@@ -72,15 +73,15 @@ export function Footer() {
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-                <span className="text-sm text-muted-foreground">Jl. Kesehatan No. 123, Jakarta Selatan, 12345, Indonesia</span>
+                <span className="text-sm text-muted-foreground">{SITE_CONFIG.address}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-primary shrink-0" />
-                <span className="text-sm text-muted-foreground">+62 812 3456 7890</span>
+                <span className="text-sm text-muted-foreground">{SITE_CONFIG.phone}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="h-5 w-5 text-primary shrink-0" />
-                <span className="text-sm text-muted-foreground">hello@si4care.id</span>
+                <span className="text-sm text-muted-foreground">{SITE_CONFIG.email.general}</span>
               </li>
             </ul>
           </div>

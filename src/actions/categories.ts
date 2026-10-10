@@ -2,6 +2,7 @@
 
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
+import { revalidateStorefront } from "@/lib/revalidate";
 import { randomUUID } from "crypto";
 import { eq, asc } from "drizzle-orm";
 import { db } from "@/lib/db";
@@ -34,6 +35,7 @@ export async function createCategory(input: CategoryInput) {
   });
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }
 
 export async function updateCategory(id: string, input: CategoryInput) {
@@ -50,6 +52,7 @@ export async function updateCategory(id: string, input: CategoryInput) {
     .where(eq(categories.id, id));
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }
 
 export async function deleteCategory(id: string) {
@@ -58,4 +61,5 @@ export async function deleteCategory(id: string) {
   await db.delete(categories).where(eq(categories.id, id));
   revalidatePath("/admin/categories");
   revalidatePath("/admin/products");
+  revalidateStorefront();
 }

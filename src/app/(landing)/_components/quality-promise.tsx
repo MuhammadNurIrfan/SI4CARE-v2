@@ -17,9 +17,10 @@ const points = [
 ];
 
 const stats = [
-  { value: "10rb+", label: "Pelanggan" },
-  { value: "500+", label: "Produk alkes" },
-  { value: "34", label: "Provinsi terjangkau" },
+  // Fakta sistem, bukan metrik penjualan — dulu "10rb+ Pelanggan / 500+ Produk / 34 Provinsi" tak bisa dibuktikan.
+  { value: "100%", label: "Produk original" },
+  { value: "FEFO", label: "Kontrol kedaluwarsa" },
+  { value: "Nasional", label: "Pengiriman kurir" },
 ];
 
 export function QualityPromise() {

@@ -2,7 +2,7 @@
 
 > Dokumen handoff. Dibaca AI/developer mana pun yang melanjutkan proyek ini.
 > Update file ini setiap sesi: centang yang selesai, tambah catatan di bagian "Log Sesi".
-> Terakhir diperbarui: 2026-10-09.
+> Terakhir diperbarui: 2026-10-11.
 
 ---
 
@@ -15,7 +15,7 @@
 | Status | Backend aktif. **Database dimigrasikan MySQL → PostgreSQL (Supabase) pada 2026-10-08** — lihat §7d. |
 | Bahasa UI | Indonesia |
 | Dokumen sumber | `prd.md` (requirement), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`, `docs/migration-plan-backend.pdf` (rencana migrasi), `docs/adr/0001-backend-stack.md` |
-| Perintah | `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` |
+| Perintah | `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` · `npm test` · `npm run test:e2e` · `test:reports` · `test:webhook` · `test:settlement` · `test:dashboard` · `test:security` · `db:seed` · `db:seed:demo` · `db:set-password` |
 | Backend | **PostgreSQL (Supabase, region ap-southeast-1)** + Drizzle ORM + Better Auth + Upstash Redis + Midtrans + RajaOngkir. ADR-0001 mencatat MySQL — sudah tidak berlaku, lihat §7d. |
 
 **Keputusan desain yang TIDAK boleh diubah tanpa persetujuan owner:**
@@ -28,162 +28,83 @@
 
 ---
 
-## ⚡ TODO Aktif — Apa yang Harus Dikerjakan
+## ⚡ Status & Tugas — diperbarui 2026-10-11
 
-> Disusun 2026-10-08 setelah migrasi PostgreSQL. Urut berdasarkan prioritas, bukan berdasarkan fase.
-> Detail tiap item ada di section bernomor yang dirujuk.
+> **Aturan pakai:** bagian ini adalah satu-satunya daftar tugas aktif. Blok P0–P4 dan Tahap A–E versi lama
+> sudah dilebur ke sini; riwayatnya ada di **Log Sesi** dan §7e–§7h.
+
+### Kondisi terverifikasi (diukur, bukan diklaim)
+
+| Pemeriksaan | Hasil |
+|---|---|
+| `npx tsc --noEmit` | bersih |
+| `npm test` (Vitest) | **115/115** |
+| `npm run test:e2e` (dev server, 1 worker) | **76/76**, 0 skip |
+| Build production (`npm run build`) | sukses; `/`, `/shop`, `/shop/[id]`, `/blog`, `/blog/[slug]` = ISR 1 menit |
+| `test:webhook` — server **production**, pooler **6543** | 16/16 (termasuk 3 webhook bersamaan → hanya 1 diproses) |
+| `test:settlement` / `test:reports` / `test:dashboard` — pooler 6543 | 16/16 · 9/9 · 45/45 |
+| `test:security` — serangan ke server action, build production | 14/14 ditolak, DB utuh |
+| Server production dengan env salah | menolak melayani request; pesan menunjuk variabelnya |
+| Lint seluruh proyek | 15 error **pra-eksisting** (dulu 34); tidak ada yang ditambahkan sesi ini — `landing-editor-client.tsx` yang ikut tersentuh (2 baris impor) punya 5 error sebelum maupun sesudah |
+
+### 🧑 Tugas Owner — hanya kamu yang bisa mengerjakan
+
+Detail langkah ada di **`docs/deploy-vercel.md`**. Urut dari atas.
+
+**Sebelum deploy**
+
+| # | Tugas | Kenapa / catatan |
+|---|---|---|
+| **O1** | Cek repo GitHub **publik atau privat**; jadikan privat bila boleh | Password lama ada di riwayat git yang ter-push |
+| **O2** | **Ganti password** akun seed: `NEW_PASSWORD='…' npm run db:set-password -- admin@si4care.com` (ulangi tiap email, lalu perbarui `SEED_*` di `.env.local`) | Wajib sebelum situs publik. Skrip sudah diuji end-to-end |
+| **O3** | Buat **database Upstash Redis baru**, isi `UPSTASH_REDIS_REST_URL` + `_TOKEN` | Yang lama sudah dihapus Upstash (NXDOMAIN). Tanpa ini situs tetap jalan, tapi tanpa cache ongkir & rate-limit lintas-instance |
+| **O4** | Putuskan: **Supabase produksi terpisah** dari lokal? | Kalau tidak, transaksi uji dan akun demo lokal langsung muncul di situs live |
+| **O5** | Isi **`KOMERCE_STORE_ORIGIN_ID`** (ID wilayah toko; cara mencari ada di `.env.example`) | Tanpa ini asal ongkir = kelurahan pertama hasil pencarian "JAKARTA SELATAN" — kurang presisi |
+| **O6** | **Ganti data placeholder** di `src/lib/site-config.ts`: nomor WhatsApp (`6285555555555` tidak aktif), telepon, alamat, email, jam | Satu file untuk footer, kontak, privasi, S&K, FAQ, struk POS |
+| **O7** | **Konten & klaim**: ganti 6 testimoni contoh (`/admin/content`), tulis artikel asli menggantikan 3 artikel contoh, pastikan klaim "Terdaftar BPOM · Izin Alkes Resmi Kemenkes" (hero, metadata, FAQ) benar, siapkan foto kategori/produk asli | Klaim regulasi harus bisa dibuktikan; testimoni contoh memuat nama orang rekaan |
+
+**Deploy**
+
+| # | Tugas | Catatan |
+|---|---|---|
+| **O8** | `vercel login` (Continue with GitHub → `MuhammadNurIrfan`), import project, isi env var | `vercel.json` sudah mengunci region Singapore. `DATABASE_URL` pakai **port 6543** |
+| **O9** | Deploy dan jalankan daftar periksa pasca-deploy (`docs/deploy-vercel.md` §3) | |
+| **O10** | Isi **Payment Notification URL** Midtrans: `https://<domain>/api/payment/notification` | Tanpa ini pesanan tak pernah jadi *Dibayar* |
+
+**Sesudahnya**
+
+| # | Tugas | Catatan |
+|---|---|---|
+| **O11** | Cloudflare **R2** (bucket + 5 env var) bila ingin upload foto di produksi | Tanpa R2, upload ditolak 503 (disk Vercel read-only) |
+| **O12** | Hapus akun demo `budi@/siti@/hendra@example.com` dan data uji di DB produksi; `npm run test:reports:clean` sebelum demo | |
+| **O13** | Secret GitHub `DATABASE_URL`, lalu aktifkan blok `schedule` di `.github/workflows/db-backup.yml` | Backup harian |
+| **O14** | *(opsional)* Google OAuth; plugin & MCP Vercel (`npx plugins add vercel/vercel-plugin --target claude-code`) | Plugin **wajib** `--target claude-code`: auto-detect salah memilih Cursor |
+
+### 🤖 Sisa pekerjaan kode — tidak memblokir deploy
+
+| # | Pekerjaan | Catatan |
+|---|---|---|
+| **K1** | Halaman **Pengaturan admin** (`/admin/settings`) hanya tampilan: 28 `useState`, tombol Simpan tidak menyimpan ke mana pun | Profil toko dibaca dari `site-config.ts`, bukan dari halaman ini |
+| **K2** | **Security pass lanjutan**: CSRF token, output escaping, role DB least-privilege (jangan pakai `postgres` superuser untuk aplikasi) | Headers + CSP sudah ada di `next.config.ts` |
+| **K3** | **Fitur ulasan produk** belum ada. Rating/ulasan/"terjual" karangan sudah dihapus dari UI | Kalau fitur dibuat, `ProductCard` sudah siap menerima `rating`/`sold` |
+| **K4** | Tanggal ledger & laporan memakai **UTC**: transaksi pukul 00.00–07.00 WIB tercatat di hari sebelumnya | Berlaku sama untuk POS, web, marketplace |
+| **K5** | **Retur/refund setelah dibayar** belum mengoreksi ledger | Ledger mencatat penjualan saat dibayar; pembatalan setelahnya tidak mengurangi |
+| **K6** | Stok yang ditampilkan di etalase menghitung **batch kedaluwarsa** juga (`SUM(remaining)`), padahal alokasi FIFO/FEFO membuangnya | Checkout tetap benar karena divalidasi saat alokasi |
+| **K7** | 15 error lint `react-hooks/*` pra-eksisting (navbar, carousel, CartContext, landing-editor, dll.) | Perbaiki incremental saat menyentuh file terkait |
+| **K8** | Nilai tambah: toast `sonner`, scanner kamera POS, inbound + stock opname atomik, kontras WCAG AA `text-muted-foreground`, cetak struk thermal ESC/POS + label barcode 33×15 mm | |
+| **K9** | Transaction pooler: `limit-concurrency.ts` memaksa satu query per koneksi karena Supavisor menggantung bila dipipeline. Cek apakah masih perlu setelah Supabase/`postgres-js` diperbarui | Lihat §7h #9 |
+
+### ✅ Sudah selesai sesi 2026-10-09 → 10-11 (ringkas; rincian di §7e–§7h)
+
+`A1` kredensial Midtrans/Komerce diisi dan diuji ke layanan nyata · `A1b` kegagalan Redis tak lagi mematikan ongkir ·
+`A1c` integrasi Komerce ditulis ulang untuk API baru · `A2` validasi env (server production menolak start) ·
+`A3` password keluar dari repo · `A4` push · `B0` Vercel CLI v63.1.0 · `B4–B5` env & URL (panduan di docs) ·
+`C5` rate-limit login aktif di production · `D1` CMS membaca DB · `E1` koreksi catatan CSP ·
+`E2` `mysql2` bukan dependensi langsung lagi · `E3` `mock-data.ts` dihapus · `E4` SQL chat usang dihapus ·
+`E5` tab POS memakai `Tabs` shadcn · dashboard `/admin` memakai data nyata · ledger web & marketplace ·
+webhook atomik · foto kategori dari DB · halaman detail produk nyata · ISR · klien DB tahan pooler transaksi.
 
 ---
-
-## 🎯 Urutan Eksekusi menuju Deploy — disusun 2026-10-09
-
-> Dikerjakan satu per satu, dari atas. Kolom **Siapa** menandai mana yang hanya bisa
-> dilakukan owner (kredensial, login browser, keputusan, foto) dan mana yang bisa dikerjakan AI.
-> Nomornya dipakai sebagai rujukan singkat saat eksekusi ("kerjakan A2").
-
-### Tahap A — Blocker: tanpa ini deploy menghasilkan situs yang alur utamanya mati
-
-| # | Pekerjaan | Siapa | Status |
-|---|---|---|---|
-| **A1** | **Isi kredensial kosong di `.env.local`** — dikerjakan 2026-10-10, **1 dari 3 layanan hidup**. Diuji ke layanan sungguhan, bukan sekadar dimasukkan ke file: **Midtrans OK** (Snap token berhasil didapat → blocker checkout utama hilang). **Upstash GAGAL** & **Komerce GAGAL** — keduanya bukan karena kredensial, lihat A1a/A1c. `MIDTRANS_MERCHANT_ID` ikut ditambahkan (tidak dirujuk kode, hanya rujukan dashboard) dan `KOMERCE_STORE_ORIGIN` (dipakai di 2 tempat). | Owner + AI | [~] sebagian |
-| **A1a** | **Buat database Upstash Redis baru.** `selected-buzzard-150581.upstash.io` → **NXDOMAIN** dari 3 resolver berbeda: databasenya **sudah tidak ada** (free tier Upstash menghapus yang lama tidak aktif). Token tidak berguna tanpa database hidup. Setelah dibuat, isi `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` yang baru. | Owner | [ ] |
-| **A1b** | **Buat kegagalan cache Redis tidak mematikan endpoint.** `src/app/api/shipping/cost/route.ts:95` memanggil `redis.get()` **tanpa try/catch** sebagai operasi pertama, jadi Redis mati → route **HTTP 500** → checkout tidak bisa mengambil opsi ongkir. Dibuktikan langsung: `ENOTFOUND selected-buzzard-150581.upstash.io` di log dev. Ironisnya tabel ongkir cadangan di baris 110 **tidak pernah tercapai** karena `redis.get` throw lebih dulu; `redis.set` di baris 116 & 121 juga tanpa guard. Cache yang mati seharusnya menurunkan kualitas, bukan menjatuhkan checkout. | AI | [ ] |
-| **A1c** | **Perbarui integrasi API Komerce — endpoint lama sudah mati.** `merchant-api.komerce.id` → **NXDOMAIN**. API-nya pindah DAN berubah bentuk: host `rajaongkir.komerce.id`, path `/api/v1/calculate/domestic-cost`, `Content-Type: application/x-www-form-urlencoded` (bukan JSON), dan **`origin`/`destination` sekarang ID numerik** dari endpoint pencarian tujuan terpisah — bukan nama kota seperti `KOMERCE_STORE_ORIGIN="JAKARTA SELATAN"` yang dipakai sekarang. Jadi butuh langkah pencarian ID + penyesuaian env, bukan sekadar ganti URL. Kegagalan Komerce sendiri sudah ditangani rapi (`Promise.allSettled` → tabel cadangan), jadi ini tidak memblokir checkout **setelah A1b selesai** — hanya membuat ongkir memakai tarif cadangan, bukan tarif nyata. | AI | [ ] |
-| **A2** | **Validasi env pakai zod** — bikin variabel wajib yang kosong menggagalkan startup, bukan merusak checkout diam-diam. Penyebab A1 lolos tanpa sadar: `midtrans.ts` fallback `?? ""` dan `redis.ts` pakai `!`, jadi tidak ada yang mengeluh sampai runtime. | AI | [ ] |
-| **A3** | **Keluarkan kredensial dari repo** — selesai 2026-10-10. Password seed & E2E sekarang dibaca dari env (`SEED_ADMIN_PASSWORD`, `SEED_SUPERADMIN_PASSWORD`, `SEED_CUSTOMER_PASSWORD`); seeder berhenti dengan pesan jelas kalau kosong. Dibersihkan dari `seed.ts`, `seed-demo.ts`, 4 spec E2E, `README.md`, `docs/skenario-demo.md`, dan file ini. Ditambahkan `.env.example` (hanya nama variabel) + pengecualian `!.env.example` di `.gitignore`. `test:e2e` kini memuat `.env.local` lewat `node --env-file`. | AI | [x] |
-| **A3a** | **🔴 ROTASI PASSWORD — wajib, belum selesai.** Membersihkan tree **tidak** menghapus password dari riwayat: password admin lama ada di **2 commit yang sudah ter-push** di GitHub, password customer di 1 commit (dicek dengan `git log origin/main -S'<password>'`). Siapa pun yang bisa membaca repo bisa menemukannya via `git log -p`. Ganti password akun admin di Supabase, lalu perbarui `SEED_*` di `.env.local`. **Juga pastikan repo ini publik atau privat** — kalau publik, ini mendesak. | Owner | [ ] |
-| **A4** | **Push 2 commit yang sudah ada** (`c9a10b3` migrasi PostgreSQL, `5a583e6` auth guard + E2E + agregat SQL). Push sebelumnya diblokir karena A3. | Owner | [ ] |
-
-### Tahap B — Setup & koneksi Vercel
-
-| # | Pekerjaan | Siapa | Status |
-|---|---|---|---|
-| **B0** | Install Vercel CLI — **selesai 2026-10-09, v63.1.0**. Catatan: percobaan pertama gagal `ECONNRESET` (tethering tidak stabil untuk download besar); berhasil setelah `--fetch-retries=10`. | AI | [x] |
-| **B1** | **`vercel login`** → pilih "Continue with GitHub", login sebagai `MuhammadNurIrfan`. Interaktif, tidak bisa dijalankan AI. Ini sekaligus menautkan akun GitHub ke scope Vercel `si-4-care` — lihat §9 soal akun berbeda. | Owner | [ ] |
-| **B2** | *(opsional)* Plugin guidance Vercel. **Wajib pakai `--target claude-code`**: auto-detect salah memilih Cursor, jadi perintah polos di panduan Vercel akan memasang 33 skill + hooks + MCP ke Cursor. Diblokir untuk AI (self-modification). `npx plugins add vercel/vercel-plugin --target claude-code --scope user` | Owner | [ ] |
-| **B3** | *(opsional)* `vercel mcp --clients "Claude Code"` — butuh OAuth, dan self-modification untuk AI. | Owner | [ ] |
-| **B4** | **`vercel link` + daftarkan env var di project Vercel.** Semua yang ada di `.env.local` kecuali yang khusus lokal. | AI | [ ] |
-| **B5** | **`BETTER_AUTH_URL` diarahkan ke domain produksi** (jangan `localhost`) — kalau tidak, redirect auth rusak setelah deploy. | AI | [ ] |
-| **B6** | **Deploy pertama** + asap uji `/`, `/shop`, `/login`, `/admin` di URL produksi. | AI | [ ] |
-
-### Tahap C — Supaya benar setelah hidup di produksi
-
-| # | Pekerjaan | Siapa | Status |
-|---|---|---|---|
-| **C1** | **Swap upload foto ke Cloudflare R2.** `public/uploads/` tidak bisa ditulis di Vercel → semua foto hilang. Butuh `R2_ENDPOINT`, `R2_ACCESS_KEY`, `R2_SECRET_KEY`, dan **`R2_PUBLIC_URL`** yang sudah dirujuk `next.config.ts` tapi belum ada di `.env.local` — tanpa itu `images.remotePatterns` kosong di production dan `next/image` menolak semua gambar remote. | Owner + AI | [ ] |
-| **C2** | **Webhook Midtrans diarahkan ke URL publik** (`/api/payment/notification`). Baru bisa diuji sungguhan setelah B6 — justru terbantu oleh deploy. | Owner | [ ] |
-| **C3** | **Putuskan nasib akun demo di DB produksi** (`budi@`/`siti@`/`hendra@example.com`). Bagus untuk demo klien, tidak boleh ada di produksi sungguhan. | Owner | [ ] |
-| **C5** | **Aktifkan rate-limit login.** `src/lib/auth/index.ts` menyetel `rateLimit: { enabled: false }` dengan komentar "enable saat production" — jadi produksi **tanpa proteksi brute-force** kalau dibiarkan. Butuh Redis hidup (A1a) lebih dulu. | AI | [ ] |
-| **C4** | **Set secret `DATABASE_URL` di GitHub** lalu aktifkan lagi blok `schedule` di `.github/workflows/db-backup.yml` untuk backup harian. | Owner | [ ] |
-
-### Tahap D — Fungsional yang masih tertinggal
-
-| # | Pekerjaan | Siapa | Status |
-|---|---|---|---|
-| **D1** | **Sambungkan jalur baca CMS ke DB** (§7g). Editor admin menulis ke `content_sections`, tapi landing membaca `localStorage` — **edit konten tidak pernah terlihat pengunjung**. Perlu mengubah API `ContentProvider`, jadi butuh persetujuan owner karena menyentuh halaman depan. Sementara: sudah ditandai "jangan didemokan". | AI | [ ] |
-| **D2** | **2–3 foto kategori asli** untuk demo upload. Butuh foto dari owner; jalan di lokal, tapi baru aman di produksi setelah C1. | Owner | [ ] |
-
-### Tahap E — Kebersihan, tidak memblokir apa pun
-
-| # | Pekerjaan | Siapa | Status |
-|---|---|---|---|
-| **E1** | **Koreksi catatan P3**: security headers + CSP **sudah ada** di `next.config.ts` (HSTS, frame-ancestors, CSP per-sumber untuk Midtrans/Upstash/Komerce). Yang benar-benar belum: CSRF token, output escaping, role DB least-privilege. | AI | [x] selesai 2026-10-09 |
-| **E2** | Hapus `mysql2` dari `dependencies` — setelah worktree `.kilo/worktrees/grizzly-slip` selesai/dibuang (`git worktree list`). | AI | [ ] |
-| **E3** | Lepas 2 konsumen terakhir `mock-data.ts` (`shop/[id]/page.tsx`, `featured-products.tsx`), lalu hapus filenya. | AI | [ ] |
-| **E4** | `docs/sql/chat-migration.sql` masih SQL MySQL & tidak dipakai — hapus atau tandai usang. | AI | [ ] |
-| **E5** | Tab switcher POS → pakai `src/components/ui/tabs.tsx` (sekarang `<button>` manual tanpa `role="tab"`). Jangan dikerjakan menjelang demo. | AI | [ ] |
-| **E6** | 34 error lint `react-hooks/set-state-in-effect` pra-eksisting — perbaiki incremental saat menyentuh file terkait. | AI | [ ] |
-| **E7** | P4 nilai tambah: toast `sonner`, scanner kamera POS, inbound+opname atomik, cek kontras WCAG AA. | AI | [ ] |
-
-> **Catatan operasional:** dev server mati otomatis karena batas waktu background pada 2026-10-09.
-> E2E (`npm run test:e2e`) **wajib** ada `npm run dev` jalan, plus `db:seed` dan `db:seed:demo`.
-
----
-
-### P0 — Blocker, kerjakan lebih dulu
-
-- [x] **🔒 Tutup 4 server action tanpa auth guard** — selesai 2026-10-09, **blocker deploy**.
-  Ditemukan saat menyiapkan uji stock opname: `stock-opname.ts`, `content.ts`, `alarms.ts`, dan
-  `reports.ts` tidak punya `requireAdmin()` sama sekali, padahal AGENTS.md mewajibkannya.
-  Server action adalah endpoint POST — begitu direferensikan dari client component, ID-nya masuk
-  bundle browser dan **bisa dipanggil anonim dari internet**. Paling parah: `closeSession()`
-  memungkinkan siapa pun menyetel ulang stok sewenang-wenang. Detail & cara audit di §7f.
-
-- [x] **Jadwal backup harian dinonaktifkan sementara** (2026-10-08) — blok `schedule` di
-  `.github/workflows/db-backup.yml` di-comment supaya tidak gagal tiap hari. Hanya `workflow_dispatch`
-  (manual) yang aktif. Untuk mengaktifkan lagi: hapus komentar blok schedule + set secret di bawah.
-- [ ] **Set secret `DATABASE_URL` di GitHub** (hanya perlu saat mau mengaktifkan lagi backup otomatis)
-  → repo **Settings > Secrets and variables > Actions > New repository secret**. Name: `DATABASE_URL`,
-  Secret: isi connection string Supabase (sama dengan `.env.local`). Secret `MYSQL_*` lama boleh dihapus.
-- [x] **Pastikan jaringan kerja bisa menjangkau Supabase** (2026-10-09, via tethering HP) — diuji
-  bertahap: DNS resolve ✓, TCP handshake port 5432 ✓, lalu **query SQL nyata dijawab server**
-  (PostgreSQL 17.11) ✓, 26 tabel + seed utuh. Catatan: TCP handshake saja **tidak cukup** sebagai
-  bukti — saat ISP memblokir, handshake tetap lolos lalu koneksi diputus ~1 RTT kemudian. Selalu
-  verifikasi dengan query sungguhan: `psql "$DATABASE_URL" -c "select version();"`.
-  Connection string memakai **session pooler** (`...pooler.supabase.com:5432`), bukan direct
-  connection — benar untuk jaringan tanpa IPv6.
-- [x] **Jalankan `npm run test:reports`** — selesai 2026-10-09, **9/9 cek LULUS**. Query laporan
-  ternyata menyimpan **lebih banyak sintaks MySQL** dari yang diketahui — `CAST(... AS SIGNED)` dan
-  `DATE(...)` di `reports.ts`, plus `CURDATE()`/`DATE_ADD()` di `alarms.ts` — semua lolos `tsc` tapi
-  gagal di runtime PostgreSQL. Diperbaiki 2026-10-08 (`AS INTEGER`, `::date`, `CURRENT_DATE`,
-  `+ INTERVAL '30 days'`). Run pertama 2026-10-09 **masih gagal 2/9** dan membongkar satu kelas bug
-  baru (agregat → string) — lihat §7e. Setelah ditambal: 9/9 lulus.
-  **Sebelum demo jalankan `npm run test:reports:clean`** — script sengaja meninggalkan 3 transaksi
-  uji di DB (dibersihkan di run berikutnya), dan kalau dibiarkan angkanya ikut muncul di
-  `/admin/reports` saat presentasi.
-
-### P1 — Sebelum presentasi klien (§5)
-
-- [x] **Uji alur end-to-end di PostgreSQL** — selesai 2026-10-09. Tercakup E2E Playwright:
-  belanja → keranjang → checkout + voucher `SEHAT10` → admin lihat pesanan → POS (bayar) →
-  stock opname → laporan → alarm. Lihat §7g untuk bug yang ketemu saat pengujian ini.
-- [x] **Jalankan ulang E2E Playwright** — selesai 2026-10-09, **52/52 lolos** (chromium + mobile),
-  nol skip. Awalnya 34 dari 38 test GAGAL; semua karena spec-nya usang, bukan aplikasi — lihat §7g.
-  Prasyarat sekarang: `npm run db:seed` + `npm run db:seed:demo` + `npm run dev` (tidak lagi XAMPP).
-- [x] **Tulis skenario demo** — selesai 2026-10-09 → `docs/skenario-demo.md`. Berisi persiapan,
-  akun, urutan 6 babak, poin jualan per langkah, daftar **yang jangan didemokan**, dan tabel
-  penanganan kalau macet.
-- [ ] **Siapkan 2–3 foto kategori asli untuk demo upload foto** — butuh foto asli dari owner,
-  tidak bisa dikerjakan dari sisi kode. Catatan: upload hanya jalan di lokal sampai swap R2 (P3).
-
-### P2 — Kebersihan pasca-migrasi
-
-- [ ] **Hapus `mysql2` dari `dependencies`** — tapi baru setelah git worktree
-  `.kilo/worktrees/grizzly-slip` selesai atau dibuang. Worktree itu berbagi `node_modules` dengan
-  root dan masih mengimpor `drizzle-orm/mysql2`; menghapus sekarang akan merusaknya.
-  Cek dulu: `git worktree list`.
-- [ ] Lepas 2 konsumen terakhir `src/lib/mock-data.ts` dari data mock ke DB:
-  `src/app/shop/[id]/page.tsx` dan `src/app/(landing)/_components/featured-products.tsx`.
-  Setelah itu `mock-data.ts` bisa dihapus.
-- [ ] `docs/sql/chat-migration.sql` masih SQL MySQL — sudah tidak dipakai (schema chat ikut di
-  migration PostgreSQL). Hapus atau tandai usang.
-- [ ] 34 error lint `react-hooks/set-state-in-effect` pra-eksisting (navbar, carousel, use-mobile,
-  CategoryContext, ContentContext, dll). Perbaiki saat menyentuh file terkait, jangan sekaligus.
-- [ ] **Tab switcher POS ditulis ulang manual** padahal `src/components/ui/tabs.tsx` tersedia —
-  melanggar aturan "pakai komponen shadcn, jangan tulis ulang". `pos-client.tsx` memakai `<button>`
-  biasa tanpa `role="tab"`/`aria-selected`, jadi pembaca layar tidak mengenalinya sebagai tab
-  (ini juga yang membuat selector E2E `getByRole("tab")` tidak pernah cocok — §7g). Ganti ke
-  komponen `Tabs` saat menyentuh halaman POS; jangan dikerjakan menjelang demo.
-
-### P3 — Sebelum produksi (§7c)
-
-- [ ] **Swap upload foto ke Cloudflare R2** — `public/uploads/` tidak bisa ditulis di Vercel, jadi
-  semua foto produk/kategori akan hilang setelah deploy. Isi `R2_ENDPOINT`, `R2_ACCESS_KEY`,
-  `R2_SECRET_KEY` di `.env.local`.
-- [ ] Security pass lanjutan: output escaping, CSRF token, role DB least-privilege
-  (Supabase: jangan pakai `postgres` superuser untuk aplikasi). **Security headers + CSP sudah
-  SELESAI** — ada di `next.config.ts` (HSTS, X-Frame-Options, Permissions-Policy, CSP per-sumber
-  untuk Midtrans/Upstash/Komerce). Catatan lama yang menyebutnya belum, salah.
-- [ ] Webhook Midtrans butuh URL publik — siapkan `ngrok` untuk dev atau domain untuk produksi.
-- [ ] Deploy: `output: "standalone"` di `next.config`, lalu Vercel atau VPS ≥1GB + swap.
-- [ ] Cetak struk thermal ESC/POS + label barcode 33×15mm.
-
-### P4 — Nilai tambah (§6)
-
-- [ ] Toast/notifikasi global pakai `sonner` — sebagian aksi masih tanpa umpan balik visual.
-- [ ] Scanner kamera (getUserMedia) untuk tombol Scan di POS.
-- [ ] Inbound + stock opname atomik (§7b).
-- [ ] Cek kontras WCAG AA untuk `text-muted-foreground` di atas latar muted.
 
 ## 2. Peta Kode (untuk orientasi cepat)
 
@@ -243,17 +164,17 @@ Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan
 
 - [x] Uji di perangkat fisik (mobile viewport 375x812): Landing hero, POS, checkout, orders — selesai 2026-09-24
 - [x] `npm run build` di mesin lokal — selesai 2026-09-24, TypeScript bersih, build artifact ✓
-- [ ] Siapkan 2–3 foto kategori asli untuk demo upload foto
-- [ ] Skenario demo tertulis: alur belanja → checkout pakai voucher `SEHAT10` → admin lihat pesanan → POS → stock opname
+- [ ] Siapkan 2–3 foto kategori asli untuk demo upload foto  → tugas owner **O7**
+- [x] Skenario demo tertulis: alur belanja → checkout pakai voucher `SEHAT10` → admin lihat pesanan → POS → stock opname — selesai: `docs/skenario-demo.md`
 
 ## 6. NILAI TAMBAH DEMO (menengah, opsional)
 
-- [ ] Halaman detail artikel `/blog/[slug]` (kartu blog belum bisa diklik ke isi)
-- [ ] Toast/notifikasi global (sebagian aksi tanpa umpan balik visual) — pakai `sonner`
-- [ ] Upload foto per-produk (override foto kategori)
-- [ ] Scanner kamera (getUserMedia) untuk tombol Scan di POS
-- [ ] Riwayat sesi stock opname
-- [ ] Cek kontras WCAG AA untuk `text-muted-foreground` di atas latar muted
+- [x] Halaman detail artikel `/blog/[slug]` (kartu blog belum bisa diklik ke isi) — selesai (`blog/[slug]` + ISR; landing menaut ke artikel nyata)
+- [ ] Toast/notifikasi global (sebagian aksi tanpa umpan balik visual) — pakai `sonner`  → **K8**
+- [x] Upload foto per-produk (override foto kategori) — selesai (Fase 6; produksi butuh R2, lihat **O11**)
+- [ ] Scanner kamera (getUserMedia) untuk tombol Scan di POS  → **K8**
+- [x] Riwayat sesi stock opname — selesai (`getSessionHistory`)
+- [ ] Cek kontras WCAG AA untuk `text-muted-foreground` di atas latar muted  → **K8**
 
 ---
 
@@ -279,7 +200,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
 - [x] **`admin/layout.tsx`**: jadi async server component, cek `auth.api.getSession` — redirect ke `/login` bila tidak ada sesi, redirect ke `/` bila role bukan admin/super_admin. Data user diteruskan ke `AppSidebar` (footer + tombol Keluar nyata) & header (nama asli, bukan "Super Admin" hardcode).
 - [x] **`src/proxy.ts`** (bukan `middleware.ts` — Next.js 16 men-deprecate konvensi itu, lihat `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/proxy.md`): gate cepat berbasis cookie untuk `/admin/*` & `/account/*`, redirect ke `/login?redirect=...` bila tak ada sesi sama sekali. Cek role tetap di layout (butuh query DB, proxy hanya cek cookie).
 - [x] **Diuji end-to-end via curl**: sign-up → role default `customer` tersimpan benar; akses `/admin` sebagai customer → redirect ke `/`; promote role ke `admin` langsung di DB → akses `/admin` jadi 200; akses `/account/addresses` tanpa cookie → redirect ke `/login`; sign-in mengembalikan role terbaru. Data uji sudah dihapus dari DB setelah verifikasi.
-- [ ] Rate-limit login — **dipindah ke Fase 1.3** (Online shop/checkout): butuh Upstash Redis aktif untuk simpan counter percobaan login, dan Redis pertama kali memang diaktifkan di 1.3 untuk cache ongkir RajaOngkir — sekalian setup di situ, jangan lupa.
+- [x] Rate-limit login — **dipindah ke Fase 1.3** (Online shop/checkout): butuh Upstash Redis aktif untuk simpan counter percobaan login, dan Redis pertama kali memang diaktifkan di 1.3 untuk cache ongkir RajaOngkir — sekalian setup di situ, jangan lupa. **→ SELESAI 2026-10-11** (`lib/auth/rate-limit-storage.ts`, aktif di production: 10 percobaan/15 mnt per IP, fallback memori bila Redis mati)
 
 **~~Catatan teknis (operasional MySQL/MariaDB lokal)~~ — TIDAK BERLAKU sejak 2026-10-08 (pindah ke PostgreSQL, lihat §7d). Disimpan sebagai catatan sejarah:** `drizzle-kit push` punya bug reproducible di MariaDB 10.4.28 — push kedua ke tabel yang sudah ada selalu gagal dengan `ER_MULTIPLE_PRI_KEY` pada tabel `account` (drizzle-kit salah membaca PK saat re-introspeksi). **Solusinya: pakai `npm run db:generate` lalu `npm run db:migrate`** (migration file based, terbukti idempotent — sudah dites jalan 2x tanpa error), bukan `npm run db:push`. Script `db:push` masih ada di `package.json` tapi hindari dipakai berulang di tabel yang sudah ada.
 
@@ -336,7 +257,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - **Backup terjadwal** (`.github/workflows/db-backup.yml`): cron 02:00 WIB + `workflow_dispatch`, `mysqldump --single-transaction --routines --triggers | gzip`, upload artifact 30 hari, slot B2/S3 siap uncomment. `npm run db:backup` untuk backup lokal via XAMPP.
   - **Multi-cabang MVP**: tabel `branches` + default row `('main', 'Toko Utama')`. Kolom `branch_id VARCHAR(36) DEFAULT 'main' NOT NULL` ditambah ke `outbound_transactions`, `orders`, `ledger_entries`, dan `stock_opname_sessions`. Semua transaksi eksisting otomatis masuk cabang 'main'.
   - **Migration**: semua tabel baru + kolom baru via direct SQL XAMPP mysql client (MariaDB 10.4 kompatibel).
-- [ ] Inbound + stock opname atomik (sudah ada sesi opname; inbound tetap manual via existing page)
+- [ ] Inbound + stock opname atomik (sudah ada sesi opname; inbound tetap manual via existing page)  → **K8**
 - [x] **Fase 1.5 — Laporan + Fase 2 Domain Lanjutan** — selesai 2026-06-22:
   - **Laporan** (`admin/reports`): tambah tombol Laporan di header admin; `admin/reports/page.tsx` jadi server component dengan query agregat dari `ledger_entries`/`outbound_transactions`; `_components/reports-client.tsx` (filter periode+channel, KPI cards, AreaChart, PieChart, BarChart, top produk, MDR table).
   - **Barcode POS** (`kasir-tab.tsx`): mode scan via tombol toggle — input mono autoFocus, `handleBarcodeSubmit` (Enter = exact match `p.barcode === val` → `addToCart`, feedback 2.5 detik).
@@ -354,7 +275,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - Migration SQL: `docs/sql/chat-migration.sql` — jalankan di XAMPP sebelum test.
 
 ### 7c. Eksternal & hardening
-- [ ] Pembayaran Midtrans (verifikasi callback signature!) · Ongkir RajaOngkir/Komerce + cache Redis 24 jam + fallback tabel ongkir cadangan
+- [x] Pembayaran Midtrans (verifikasi callback signature!) · Ongkir RajaOngkir/Komerce + cache Redis 24 jam + fallback tabel ongkir cadangan — Midtrans diuji ke layanan nyata (Snap token + webhook 16/16); integrasi Komerce ditulis ulang untuk API baru (§7h #1)
 - [x] **Hardening (paralel)** — selesai 2026-06-22:
   - **Audit Log**: tabel `audit_logs` (userId, action, entityType, entityId, detail, createdAt) + `src/lib/audit.ts` helper. Log dipasang di: ubah status pesanan admin (`ORDER_STATUS_CHANGED`), validasi settlement marketplace (`SETTLEMENT_VALIDATED`), tutup sesi stock opname (`STOCK_OPNAME_CLOSED`), jual di bawah HPP (`PRICE_BELOW_HPP`).
   - **Anti-rugi**: `savePosTransaction` dan `createOrder` — cek `unitPrice < avgHpp` setelah alokasi batch; tolak dengan error + log audit `PRICE_BELOW_HPP`.
@@ -363,7 +284,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - **Shared helpers**: `src/lib/server-auth.ts` — `requireSession()` + `requireAdmin()` reusable. `src/lib/audit.ts` — `logAudit()` never throws (audit failure tidak boleh block transaksi).
   - **QRIS compliance**: Dropdown POS tidak lagi tampilkan "0.7% MDR" di nama metode (tidak boleh menyiratkan surcharge ke pelanggan). MDR row di summary berubah jadi "MDR X% (ditanggung toko)". Note di QR dialog: "Pelanggan bayar {total} · MDR 0.7% ditanggung toko". `SERVICE_FEE` di orders.ts sudah flat Rp4.500 untuk semua metode (tidak berubah).
   - **Migration**: `CREATE TABLE audit_logs` via XAMPP mysql (MariaDB 10.4).
-- [ ] Security pass lanjutan: output escaping, CSRF token, akun DB non-root least-privilege. **Security headers/CSP sudah selesai** di `next.config.ts` (bukan helmet/middleware).
+- [ ] Security pass lanjutan: output escaping, CSRF token, akun DB non-root least-privilege. **Security headers/CSP sudah selesai** di `next.config.ts` (bukan helmet/middleware).  → **K2**
 - [x] **Test: unit untuk logika harga/diskon/stok, e2e alur checkout & POS** — selesai 2026-06-24:
   - Vitest v2 (`npm test`): 51 unit tests, 3 file, semua hijau.
     - `src/lib/utils/__tests__/stockAllocation.test.ts` — 13 test: FIFO order, FEFO order, expired skip, shortfall, COGS calc, tie-breaker.
@@ -392,7 +313,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
   - `getShopProducts()` — returns imageUrl untuk semua produk
   - `ProductCard` — display imageUrl (fallback ke kategori foto jika null)
   - **R2 Swap (before deploy)**: set `R2_ENDPOINT`, `R2_ACCESS_KEY`, `R2_SECRET_KEY` di `.env.local`
-- [ ] Deploy hemat memori: `output: "standalone"` di next.config, VPS ≥1GB + swap, atau Vercel; cetak struk thermal ESC/POS + label barcode 33×15mm
+- [x] Deploy hemat memori: `output: "standalone"` di next.config, VPS ≥1GB + swap, atau Vercel; cetak struk thermal ESC/POS + label barcode 33×15mm — usang: deploy ke Vercel (`output: standalone` tidak perlu); `vercel.json` mengunci region `sin1`. Struk thermal → **K8**
 
 ---
 
@@ -440,10 +361,10 @@ laporan agregat, dan batas 25 write per transaksi berisiko untuk POS.
   masalahnya ISP — bukan kredensial dan bukan Supabase.
 
 **Utang yang sengaja ditinggalkan:**
-- [ ] `mysql2` masih terdaftar di `dependencies`. **Jangan dihapus dulu** — git worktree
+- [x] `mysql2` masih terdaftar di `dependencies`. **Jangan dihapus dulu** — git worktree **→ SELESAI 2026-10-11**: bukan dependensi langsung lagi (worktree `grizzly-slip` sudah tak ada; `swamp-tracker` tak punya node_modules). Tersisa hanya sebagai peer dependency opsional `better-auth`/`drizzle-orm`.
   `.kilo/worktrees/grizzly-slip` berbagi `node_modules` dengan root dan kodenya masih mengimpor
   `drizzle-orm/mysql2`. Hapus setelah worktree itu selesai/dibuang.
-- [ ] Set secret `DATABASE_URL` di GitHub repo settings agar workflow backup harian jalan lagi.
+- [ ] Set secret `DATABASE_URL` di GitHub repo settings agar workflow backup harian jalan lagi.  → **O13**
 - [x] ADR-0001 ditandai superseded + dibuat `docs/adr/0002-pindah-ke-postgresql-supabase.md` — selesai 2026-10-08.
 
 ---
@@ -606,11 +527,102 @@ Akibatnya **edit konten oleh admin tidak pernah terlihat pengunjung lain** — h
 tanpa pembaca, sementara publik selalu melihat `DEFAULT_CONTENT`. Jadi jangan demokan alur ini
 (sudah dicatat di `docs/skenario-demo.md`).
 
-- [ ] **Sambungkan jalur baca CMS ke DB.** Rencana: `(landing)/page.tsx` jadi async server component
+- [x] **Sambungkan jalur baca CMS ke DB.** Rencana: `(landing)/page.tsx` jadi async server component
+  **→ SELESAI 2026-10-11** — lihat §7h #2.
   yang memanggil `getContentSections()`, lalu hasilnya di-inject sebagai nilai awal
   `ContentProvider` (`initialContent`), dengan `localStorage` dipakai hanya sebagai cache. Perlu
   mengubah API `ContentProvider`, jadi **sengaja tidak dikerjakan menjelang deploy** — butuh
   persetujuan owner karena menyentuh halaman depan.
+
+---
+
+### 7h. Temuan & perbaikan sesi 2026-10-10 → 10-11
+
+**Pemicu:** kredensial akhirnya diisi dan build production dijalankan untuk pertama kalinya sejak migrasi. Hampir
+semua temuan di bawah **tersembunyi oleh `npm run dev`** (di dev halaman selalu dirender ulang, CSP lebih longgar,
+status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` + serangan langsung.
+
+1. **API Komerce berubah total, bukan sekadar pindah host.** `merchant-api.komerce.id` → NXDOMAIN. Baru:
+   `rajaongkir.komerce.id/api/v1`, `POST /calculate/domestic-cost`, `x-www-form-urlencoded`, dan `origin`/`destination`
+   berupa **ID numerik** dari pencarian wilayah (bukan nama kota). Ditulis ulang di `lib/komerce.ts` (resolve nama kota →
+   ID, memo + cache, filter layanan kargo `JTR>200`/`DANGEROUS GOODS`, `0 day` → "Hari ini"). Untuk rute uji hanya
+   `jne`, `pos`, `sap` yang menjawab; `jnt`/`sicepat` dijawab 404 (diabaikan). Route `shipping/destinations` & `test` juga diperbarui.
+   Database Upstash lama **sudah tidak ada** — `lib/cache.ts` (tak pernah melempar, timeout 1,5 dtk, *circuit breaker* 30 dtk)
+   membuat Redis mati hanya menurunkan kualitas: sebelumnya `/api/shipping/cost` → **HTTP 500** → checkout tak bisa memuat ongkir.
+2. **CMS menulis ke DB tapi landing membaca `localStorage`** — edit admin tak pernah terlihat pengunjung. Sekarang
+   `lib/content-query.ts` (`loadContent` untuk render, `readStoredContent` yang **melempar** untuk jalur tulis — supaya DB yang
+   gagal dibaca sesaat tak berujung menimpa konten tersimpan dengan default), `ContentProvider` menerima `initialContent`
+   dari `(landing)/layout.tsx`. `DEFAULT_CONTENT` yang tadinya ditulis dua kali kini satu (`lib/content-defaults.ts`).
+3. **Jebakan render statis saat build.** `/`, `/shop`, `/blog`, `/blog/[slug]` membaca DB tanpa API dinamis, sehingga Next
+   merendernya **sekali saat build** — produk, harga, stok, artikel, dan konten CMS "terbakar" sampai deploy ulang. Diperbaiki
+   dengan `export const revalidate = 60` + `lib/revalidate.ts` (`revalidatePath` di semua mutasi katalog/artikel/CMS).
+   **Cek di tabel rute build: kolom `Revalidate` harus terisi** untuk halaman publik yang membaca DB. Dibuktikan di production:
+   edit DB tidak langsung terlihat (di-cache), lalu muncul setelah jendela 60 dtk tanpa deploy ulang.
+   `shop/[id]` memakai `generateStaticParams`, dan `shop/loading.tsx` **dihapus**: batas Suspense-nya membuat Next mengirim
+   cangkang HTTP 200 sebelum `notFound()` sempat jalan, sehingga ID produk yang tak ada menghasilkan *soft 404*.
+4. **Halaman detail produk mengabaikan ID di URL** dan selalu menampilkan satu produk demo (`DEMO_PRODUCT_DETAIL`), dengan
+   tombol keranjang yang menambahkan item ber-ID palsu. Kini server component + `lib/shop-queries.ts` (varian, stok, atribut,
+   metadata, 404). `mock-data.ts` dihapus.
+5. **Angka karangan di UI dibuang** (tidak ada fitur ulasan/pelanggan yang mendukungnya): rating bawaan `4.8 · 0 terjual` di
+   *setiap* kartu produk, "4,9/5 · 2.847 ulasan" (hero & testimoni), "10.000+ pelanggan puas", "500+ produk", statistik
+   "10rb+ / 500+ / 34 provinsi", harga coret & badge "Terlaris" palsu, 7 produk unggulan fiktif, 3 artikel fiktif. Diganti data
+   DB atau fakta sistem. **Dashboard `/admin` — 477 baris angka karangan beserta `periodFactor` palsu — kini dari DB**
+   (`lib/dashboard-query.ts`; omzet bruto = ledger + MDR + biaya agar MDR tak terpotong dua kali; 45 cek vs SQL independen).
+6. **Ledger hanya diisi alur POS.** Pesanan web (Midtrans) dan settlement marketplace tak pernah menulis `ledger_entries`,
+   sehingga `/admin/reports` di operasi nyata hanya memuat penjualan POS (data demo menutupinya karena `seed-demo` mengisi
+   ledger manual). Kini `lib/ledger.ts` (idempoten) + `lib/ledger-calc.ts` (murni, diuji): web = `subtotal − diskon`
+   (ongkir titipan kurir & service fee tidak dihitung; harga sudah termasuk PPN, sama seperti POS), marketplace = `netAmount`
+   saat settlement selesai (basis kas) dan **dihapus lagi bila status dikembalikan ke pending**.
+7. **Webhook Midtrans tidak atomik:** stok dipotong dulu, status diubah belakangan — proses mati di antaranya → webhook
+   dikirim ulang → stok terpotong dua kali. Kini satu transaksi dengan klaim `UPDATE … WHERE status='pending_payment' RETURNING`;
+   3 webhook bersamaan → tepat 1 diproses. `validateSettlement` juga kini hanya menerima transaksi marketplace (dulu id apa
+   pun, termasuk transaksi POS, bisa diubah) dan diekstrak ke `lib/marketplace-settle.ts` agar bisa diuji.
+8. **Nama env R2 tidak cocok:** `r2.ts` membaca `R2_ACCESS_KEY_ID`/`R2_SECRET_ACCESS_KEY`, sementara `.env` & dokumentasi
+   memakai `R2_ACCESS_KEY`/`R2_SECRET_KEY` — `.env` yang diisi benar membuat `r2Configured` diam-diam `false` dan upload jatuh
+   ke disk lokal (read-only di Vercel → 500). Kini kedua nama diterima; production tanpa R2 → HTTP 503 yang jelas; ekstensi
+   file diturunkan dari tipe MIME tervalidasi, bukan dari nama file kiriman pengguna.
+9. **Pooler Supabase.** (a) Mode *session* (5432) hanya mengizinkan **15 klien untuk seluruh proyek** (`EMAXCONNSESSION`):
+   `postgres-js` membuka 10 koneksi per proses dan tiap hot-reload dev membuat klien baru tanpa menutup yang lama.
+   Kini `max` kecil (5 dev / 3 production, `DATABASE_POOL_MAX`), `idle_timeout`, dan klien tunggal lintas hot-reload.
+   (b) **Mode transaksi (6543) — wajib untuk serverless — menggantung selamanya** bila satu koneksi menerima belasan query
+   berbeda sekaligus (`Promise.all`). Direproduksi dengan klien `postgres` mentah tanpa Drizzle (15 query: berurutan OK,
+   bersamaan timeout; mulai ±11 query, kadang lebih sedikit). `max_pipeline: 1` **tidak menolong** (`sent.length < max_pipeline`
+   dievaluasi setelah query pertama aktif → minimal 2 tetap terbang). Solusi: `lib/db/limit-concurrency.ts` menjaga jumlah
+   query aktif ≤ jumlah koneksi → tak ada pipelining. Dashboard di 6543: dari menggantung menjadi 5/5 sukses ±350 ms.
+   Tanpa ini dashboard/laporan akan menggantung begitu di-deploy ke Vercel.
+10. **Validasi env (`lib/env.ts` + `src/instrumentation.ts`).** Tiga tingkat: *error* (production menolak melayani request),
+    *peringatan*, sehat. Menangkap: kredensial Midtrans kosong, kunci Sandbox vs Production tak cocok `MIDTRANS_IS_PRODUCTION`,
+    `BETTER_AUTH_URL` localhost di production, Redis/R2 terisi separuh, `DATABASE_URL` pooler session di production.
+    Di development hanya mencetak peringatan. Terbukti: server production dengan env salah menjawab 500 + daftar persis.
+11. **Rate-limit login aktif di production** (10 percobaan/15 mnt per IP; sebelumnya `enabled:false` permanen): storage Redis
+    atomik, fallback penghitung memori. Terbukti: percobaan ke-11 → HTTP 429. Sebelum breaker, tiap percobaan menunggu timeout
+    Redis 1,5 dtk saat Redis mati; kini 2,6 dtk sekali lalu ±0,15 dtk.
+12. **Foto kategori dari DB** (`categories.imageUrl`) ke kartu produk & POS. Sebelumnya `CategoryContext` — localStorage dengan
+    SEED hardcoded 6 kategori (DB punya 4) — sehingga foto yang diunggah admin tak pernah tampil. Context dihapus.
+13. **Data kontak placeholder terpusat** di `lib/site-config.ts`: nomor WhatsApp `6285555555555` (palsu) tertulis di 2 file,
+    alamat dalam 2 versi berbeda, 2 nomor telepon. Halaman Pengaturan admin hanya tampilan (K1).
+14. **Seed artikel hilang** — artikel lama dulu dimasukkan langsung ke XAMPP dan tak pernah tercatat di repo; blog kosong
+    setelah migrasi. `seed.ts` kini memuat 3 artikel contoh (idempoten, **ganti dengan tulisan asli**).
+15. **`scripts/test-action-security.ts`** (`npm run test:security`): menyerang 7 server action sensitif di build production
+    dengan cookie palsu dan sebagai pelanggan asli, dengan kontrol positif (admin harus bisa membaca) dan perbandingan
+    snapshot DB. Perhatian: server action hanya jalan lewat **rute yang membundelnya**, dan `proxy.ts` hanya mengecek *adanya*
+    cookie — percobaan pertama saya mem-POST ke `/` sehingga semua tampak "bocor" padahal request tak pernah sampai ke action.
+16. **`scripts/set-password.ts`** (`npm run db:set-password`): `db:seed` melewati akun yang sudah ada, jadi tak ada cara lain
+    mengganti password akun seed. Password lewat env (bukan argumen), sesi lama dicabut. Diuji end-to-end.
+17. **Infrastruktur E2E:** `locator.isVisible({timeout})` **tidak menunggu** (timeout diabaikan) → tes yang memakai
+    `if (await x.isVisible()) … else test.skip()` diam-diam di-skip saat halaman belum dirender; ditulis ulang dengan `expect`.
+    `/shop` di mobile kadang punya 2 kotak cari (panel filter di-mount lewat portal) → pakai `.filter({visible:true})`.
+    `npx playwright` langsung **tidak memuat `.env.local`** — jalankan lewat `npm run test:e2e`. Suite dijalankan 1 worker
+    (mesin pengembangan sempat load average 60; dengan 2 worker tes yang sehat sesekali melewati batas waktu).
+18. Lain-lain: CSP `unsafe-eval` hanya di development (lencana "1 Issue" di dev = React eval diblokir CSP); `data-scroll-behavior`
+    di `<html>`; host Komerce di CSP diperbarui; tab POS → `Tabs` shadcn (semantik `role="tab"`); `aria-label` tombol Scan;
+    lint 34 → 15 error.
+
+**Pelajaran yang berlaku seterusnya**
+- Halaman publik yang membaca DB: **cek tabel rute `npm run build`** (harus ada `Revalidate`) dan uji dengan `next start`, bukan hanya `npm run dev`.
+- Harness uji harus punya **kontrol positif** (hal yang *harus* berhasil) — tanpa itu "semua ditolak" bisa berarti "tak pernah sampai".
+- Verifikasi pemulihan data produksi dengan **hash** (`md5(data::text)`), bukan ukuran file (byte ≠ karakter).
+- Jangan pernah merangkai `cmd || echo` / `| tail` lalu membaca exit code-nya sebagai milik `cmd`.
 
 ---
 
@@ -624,6 +636,23 @@ tanpa pembaca, sementara publik selalu melihat `DEFAULT_CONTENT`. Jadi jangan de
 6. Setiap selesai sesi: jalankan `npx tsc --noEmit` + `npm run lint`, centang item di sini, tambah 1 entri di Log Sesi.
 
 ## Log Sesi
+
+- **2026-10-10 → 10-11 — Production-readiness: 18 temuan, semuanya diperbaiki dan dibuktikan di build production**:
+  Setelah kredensial Midtrans/Komerce diisi (Midtrans hidup; Upstash lama sudah dihapus; API Komerce berubah total), build
+  production dijalankan pertama kali dan membuka serangkaian masalah yang disembunyikan `npm run dev`. Yang terpenting:
+  halaman publik yang membaca DB (`/`, `/shop`, `/blog`) **terbakar statis saat build** (→ ISR `revalidate=60` + `revalidatePath`);
+  `/shop/[id]` mengabaikan ID dan selalu menampilkan produk demo; dashboard admin 477 baris angka karangan; ledger tak pernah
+  diisi pesanan web & marketplace; webhook Midtrans tidak atomik (stok bisa terpotong dua kali); **pooler transaksi Supabase
+  menggantung** bila satu koneksi menerima banyak query berbeda sekaligus (dibuktikan dengan klien `postgres` mentah; diperbaiki
+  `limitConcurrency`); `.env` R2 memakai nama berbeda dari kode; rating/ulasan/pelanggan karangan di UI; kontak placeholder
+  tersebar di ±10 file. Ditambahkan: `lib/env.ts` + `instrumentation.ts` (server production menolak start bila env salah),
+  rate-limit login, `lib/komerce.ts`, `lib/cache.ts` (breaker), `lib/ledger*.ts`, `lib/dashboard-*.ts`, `lib/site-config.ts`,
+  `vercel.json` (region sin1), `docs/deploy-vercel.md`, `db:set-password`, `.env.example`, dan 6 skrip uji (`test:webhook`,
+  `test:settlement`, `test:dashboard`, `test:security`, plus `test:reports`) — semuanya lulus di mode transaksi 6543 terhadap
+  server production (16/16, 16/16, 45/45, 9/9, 14/14). Vitest 51 → 115; E2E 52 → 76 (0 skip). Rincian + pelajaran: **§7h**.
+  Daftar tugas yang butuh pemilik (O1–O14) ada di bagian status di atas dan `docs/deploy-vercel.md`.
+  Satu kesalahan saya dicatat: tabel serangan pertama memberi hasil "bocor" yang keliru karena request di-POST ke rute yang
+  tak membundel action; saya tidak menjadikannya dasar kesimpulan dan mengulang dengan metode benar + kontrol positif.
 
 - **2026-10-09 (lanjutan 2) — Setup Vercel + temuan kredensial kosong + daftar eksekusi**:
   Vercel CLI dipasang (**v63.1.0**); percobaan pertama gagal `ECONNRESET` karena tethering tidak

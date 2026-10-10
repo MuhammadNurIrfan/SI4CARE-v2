@@ -21,25 +21,24 @@ npm install
 
 ### 2. Siapkan `.env.local`
 
+Salin `.env.example` ke `.env.local` lalu isi nilainya (file itu mendokumentasikan tiap variabel; jangan pernah
+meng-commit `.env.local`).
+
 ```bash
-# Database — connection string session pooler dari Supabase
-# Settings > Database > Connection string > Session pooler
-DATABASE_URL=postgresql://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
-
-# Auth — generate dengan: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-BETTER_AUTH_SECRET=<random-hex-32-byte>
-BETTER_AUTH_URL=http://localhost:3000
-
-# Sisanya opsional sampai fitur terkait dipakai
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-MIDTRANS_SERVER_KEY=
-MIDTRANS_CLIENT_KEY=
-MIDTRANS_IS_PRODUCTION=false
-KOMERCE_API_KEY=
+cp .env.example .env.local
 ```
+
+Yang **wajib** agar aplikasi berjalan penuh: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`,
+`MIDTRANS_SERVER_KEY` + `MIDTRANS_CLIENT_KEY`, dan `SEED_ADMIN_PASSWORD` / `SEED_SUPERADMIN_PASSWORD` /
+`SEED_CUSTOMER_PASSWORD` (password akun seed — seeder dan test E2E berhenti dengan pesan jelas bila kosong).
+Sisanya (Redis, Komerce, R2, Google) opsional: aplikasi tetap jalan dengan fitur terkait turun kualitas.
+
+Konfigurasi dicek saat server start (`src/lib/env.ts`): di **production** server menolak melayani request bila ada
+yang tidak valid; di development hanya mencetak peringatan.
+
+> **Dua jenis connection string Supabase.** Lokal/seed/migrasi: *session pooler* (port **5432**). Production di
+> Vercel: *transaction pooler* (port **6543**) — wajib, karena mode session hanya mengizinkan 15 klien untuk seluruh
+> proyek. Lihat [docs/deploy-vercel.md](docs/deploy-vercel.md).
 
 ### 3. Siapkan database
 
@@ -68,14 +67,19 @@ npm run dev        # http://localhost:3000
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npx tsc --noEmit` | Type check — **wajib bersih sebelum selesai sesi** |
-| `npm test` | Unit test (Vitest) — 51 test |
-| `npm run test:e2e` | E2E test (Playwright) — 52 test; butuh dev server jalan + kedua seeder |
+| `npm test` | Unit test (Vitest) — 115 test |
+| `npm run test:e2e` | E2E (Playwright) — 76 test; butuh dev server jalan + kedua seeder |
 | `npm run test:reports` | Buat 3 transaksi POS nyata lalu verifikasi angka `/admin/reports` |
+| `npm run test:webhook` | Webhook Midtrans end-to-end: stok terpotong sekali, ledger terbentuk, kiriman ganda/bersamaan aman (butuh server berjalan) |
+| `npm run test:settlement` | Ledger saat settlement marketplace selesai / dibatalkan |
+| `npm run test:dashboard` | Angka dashboard `/admin` vs SQL independen |
+| `npm run test:security` | Serangan ke server action di build production (lihat header skripnya) |
 | `npm run test:reports:clean` | Hapus transaksi uji — **jalankan sebelum demo/presentasi** |
 | `npm run db:generate` | Generate file migration dari `schema.ts` |
 | `npm run db:migrate` | Terapkan migration ke database |
-| `npm run db:seed` | Isi data dasar (akun admin, katalog, voucher) |
+| `npm run db:seed` | Isi data dasar (akun admin, katalog, voucher, 3 artikel contoh) |
 | `npm run db:seed:demo` | Isi data transaksi historis + akun customer |
+| `NEW_PASSWORD='…' npm run db:set-password -- <email>` | Ganti password akun yang sudah ada + cabut sesinya |
 | `npm run db:studio` | Drizzle Studio (GUI database) |
 | `npm run db:backup` | Backup ke `.sql.gz` lewat `pg_dump` |
 
@@ -166,6 +170,7 @@ IPv6. Jaringan tanpa IPv6 wajib lewat session pooler.
 
 - [prd.md](prd.md) — product requirements
 - [checklist.md](checklist.md) — status pengerjaan, log sesi, & handoff antar sesi/AI
+- [docs/deploy-vercel.md](docs/deploy-vercel.md) — langkah deploy ke Vercel: env var, webhook Midtrans, pemeriksaan pasca-deploy
 - [docs/skenario-demo.md](docs/skenario-demo.md) — panduan presentasi ke klien (persiapan, urutan babak, yang jangan didemokan)
 - [AGENTS.md](AGENTS.md) — aturan untuk AI coding agent
 - [docs/adr/](docs/adr/) — architecture decision records

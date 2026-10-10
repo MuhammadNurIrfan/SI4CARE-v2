@@ -3,18 +3,16 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ShoppingCart, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import {
   Carousel, CarouselContent, CarouselItem, type CarouselApi,
 } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
 import { fadeInUp, VIEWPORT } from "@/lib/animationVariants";
-import { PRODUCT_ART } from "./illustrations";
-import { FEATURED_PRODUCTS } from "@/lib/mock-data";
+import { ProductCard, type Product } from "@/components/shop/product-card";
 
-const products = FEATURED_PRODUCTS.map((p) => ({ ...p, Art: PRODUCT_ART[p.art] }));
-
-export function FeaturedProducts() {
+/** Produk dari DB (dipilih server di page.tsx). Dulu 7 produk karangan, termasuk yang tak ada di toko. */
+export function FeaturedProducts({ products }: { products: Product[] }) {
   const [api, setApi] = useState<CarouselApi>();
   const [selected, setSelected] = useState(0);
   const [count, setCount] = useState(0);
@@ -64,32 +62,9 @@ export function FeaturedProducts() {
 
         <Carousel setApi={setApi} opts={{ align: "start", loop: false }}>
           <CarouselContent className="-ml-5">
-            {products.map((p, i) => (
-              <CarouselItem key={i} className="basis-[78%] pl-5 sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
-                <div className="group flex h-full flex-col overflow-hidden rounded-3xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-1.5 hover:shadow-xl">
-                  <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-accent to-secondary/60">
-                    <div className="absolute inset-0 bg-dots opacity-40" />
-                    <div className="grid h-full place-items-center">
-                      <p.Art className="h-28 w-28 transition-transform duration-500 group-hover:scale-110" />
-                    </div>
-                    {p.badge && (
-                      <span className="absolute left-3 top-3 rounded-full bg-primary px-2.5 py-1 text-[11px] font-bold text-primary-foreground shadow">
-                        {p.badge}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-1 flex-col p-5">
-                    <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{p.category}</p>
-                    <h3 className="mb-3 line-clamp-2 flex-1 font-semibold leading-snug transition-colors group-hover:text-primary">{p.name}</h3>
-                    <div className="mb-4">
-                      {p.original && <span className="mr-2 text-sm text-muted-foreground line-through">{p.original}</span>}
-                      <span className="text-lg font-extrabold">{p.price}</span>
-                    </div>
-                    <Button variant="secondary" className="w-full gap-2">
-                      <ShoppingCart className="h-4 w-4" /> Tambah
-                    </Button>
-                  </div>
-                </div>
+            {products.map((p) => (
+              <CarouselItem key={p.variantId} className="basis-[78%] pl-5 sm:basis-1/2 lg:basis-1/3 xl:basis-1/4">
+                <ProductCard product={p} />
               </CarouselItem>
             ))}
           </CarouselContent>

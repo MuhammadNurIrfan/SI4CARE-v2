@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { outboundTransactions, outboundItems } from "@/lib/db/schema";
 import { requireAdmin } from "@/lib/server-auth";
 import { logAudit } from "@/lib/audit";
+import { applySettlement } from "@/lib/marketplace-settle";
 
 export type MpTrxStatus = "pending" | "dana_masuk" | "selesai";
 
@@ -66,7 +67,7 @@ export async function getMarketplaceTxs(filters?: {
   const itemCounts = await db
     .select({
       txId: outboundItems.transactionId,
-      cnt: sql<number>`COUNT(*)`,
+      cnt: sql<number>`CAST(COUNT(*) AS INTEGER)`,
     })
     .from(outboundItems)
     .where(inArray(outboundItems.transactionId, ids))
@@ -129,11 +130,9 @@ export async function validateSettlement(
   if (!parsed.success) return { ok: false, error: "Input tidak valid" };
 
   let dbStatus: "completed" | "pending_settlement" | "cancelled" = "pending_settlement";
-  let settledAt: Date | null = null;
 
   if (newUiStatus === "selesai") {
     dbStatus = "completed";
-    settledAt = new Date();
   } else if (newUiStatus === "pending") {
     dbStatus = "pending_settlement";
   } else {
@@ -141,14 +140,8 @@ export async function validateSettlement(
     dbStatus = "pending_settlement";
   }
 
-  await db
-    .update(outboundTransactions)
-    .set({
-      status: dbStatus,
-      settledAmount: settledAmount != null ? String(settledAmount) : null,
-      settledAt: settledAt ?? undefined,
-    })
-    .where(eq(outboundTransactions.id, txId));
+  const updated = await applySettlement(txId, dbStatus, settledAmount);
+  if (!updated) return { ok: false, error: "Transaksi marketplace tidak ditemukan" };
 
   await logAudit(session.user.id, "SETTLEMENT_VALIDATED", "outbound_transactions", txId, {
     newStatus: newUiStatus, settledAmount,

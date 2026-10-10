@@ -1,3 +1,5 @@
+import { SITE_CONFIG } from "@/lib/site-config";
+
 const lastUpdated = "1 Juni 2026";
 
 const sections = [
@@ -67,7 +69,7 @@ Total tanggung jawab si4care tidak melebihi nilai transaksi yang menjadi dasar k
   },
   {
     title: "10. Hubungi Kami",
-    content: `Pertanyaan tentang Syarat & Ketentuan ini dapat dikirimkan ke:\n\nEmail: legal@si4care.id\nAlamat: Jl. Kesehatan No. 123, Menteng, Jakarta Pusat 10310`,
+    content: `Pertanyaan tentang Syarat & Ketentuan ini dapat dikirimkan ke:\n\nEmail: ${SITE_CONFIG.email.legal}\nAlamat: ${SITE_CONFIG.address}`,
   },
 ];
 

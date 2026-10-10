@@ -1,6 +1,9 @@
 import { getShopProducts } from "@/actions/products";
 import { ShopClient } from "./_components/shop-client";
 
+// ISR: data dari DB. Tanpa ini halaman dirender statis saat build dan tak pernah berubah sampai deploy ulang.
+export const revalidate = 60;
+
 export default async function ShopPage() {
   const products = await getShopProducts();
 

@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, ShieldCheck, Truck, Star, BadgeCheck } from "lucide-react";
+import { ArrowRight, ShieldCheck, Truck, BadgeCheck, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Photo } from "@/components/ui/photo";
 import { PHOTOS } from "./media";
@@ -29,7 +29,7 @@ const categories = [
 const trust = [
   { icon: ShieldCheck, text: "Original & bergaransi resmi" },
   { icon: Truck, text: "Kirim seluruh Indonesia" },
-  { icon: Star, text: "10.000+ pelanggan puas" },
+  { icon: Lock, text: "Pembayaran aman & terenkripsi" },
 ];
 
 export function Hero() {
@@ -107,20 +107,9 @@ export function Hero() {
               <TensimeterArt className="h-8 w-8" />
             </div>
             <div>
-              <p className="text-sm font-bold leading-none">500+ produk</p>
-              <p className="mt-1 text-xs text-muted-foreground">alkes original</p>
+              <p className="text-sm font-bold leading-none">Alkes original</p>
+              <p className="mt-1 text-xs text-muted-foreground">bergaransi resmi</p>
             </div>
-          </div>
-
-          {/* Floating rating card */}
-          <div className="absolute -right-3 bottom-12 rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur animate-bounce-slow">
-            <div className="flex gap-0.5">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-              ))}
-            </div>
-            <p className="mt-1.5 text-2xl font-extrabold leading-none">4.9<span className="text-sm font-medium text-muted-foreground">/5</span></p>
-            <p className="mt-1 text-xs text-muted-foreground">2.847 ulasan</p>
           </div>
         </motion.div>
       </div>

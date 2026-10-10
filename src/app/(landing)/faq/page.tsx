@@ -5,13 +5,14 @@ import Link from "next/link";
 import { ChevronDown, Search, MessageCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 const faqData = [
   {
     kategori: "Pembelian & Pesanan",
     items: [
       { q: "Bagaimana cara memesan produk di si4care?", a: "Pilih produk yang Anda inginkan dari katalog, klik 'Tambah ke Keranjang', lalu lanjutkan ke Checkout. Isi alamat pengiriman, pilih metode pembayaran, dan konfirmasi pesanan." },
-      { q: "Apakah bisa memesan dalam jumlah besar (B2B)?", a: "Ya, si4care melayani pembelian grosir dan B2B. Hubungi tim kami melalui halaman Kontak atau email ke b2b@si4care.id untuk penawaran harga khusus dan terms kemitraan." },
+      { q: "Apakah bisa memesan dalam jumlah besar (B2B)?", a: "Ya, si4care melayani pembelian grosir dan B2B. Hubungi tim kami melalui halaman Kontak atau email ke " + SITE_CONFIG.email.b2b + " untuk penawaran harga khusus dan terms kemitraan." },
       { q: "Berapa minimum pembelian di si4care?", a: "Tidak ada minimum pembelian untuk pelanggan umum. Untuk harga grosir dan B2B, berlaku minimum order yang akan dikomunikasikan oleh tim sales kami." },
       { q: "Apakah saya bisa membatalkan pesanan setelah bayar?", a: "Pembatalan dapat dilakukan selama pesanan masih berstatus 'Diproses'. Setelah pesanan berstatus 'Dikirim', pembatalan tidak dapat dilakukan. Hubungi customer service kami segera jika perlu membatalkan." },
     ],

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { MessageCircle, X, Headphones } from "lucide-react";
+import { SITE_CONFIG } from "@/lib/site-config";
 
 /** WhatsApp brand glyph */
 function WaIcon({ className = "h-5 w-5" }: { className?: string }) {
@@ -13,7 +14,7 @@ function WaIcon({ className = "h-5 w-5" }: { className?: string }) {
   );
 }
 
-const WA_NUMBER = "6285555555555"; // edit angka di sini (format internasional, tanpa +)
+const WA_NUMBER = SITE_CONFIG.whatsapp; // diubah di src/lib/site-config.ts
 const WA_PRESET = encodeURIComponent("Halo si4care, saya ingin bertanya tentang produk.");
 
 export function FloatingContact() {

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { MapPin, Mail, Clock, Headphones, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { SITE_CONFIG } from "@/lib/site-config";
 
-const WA_NUMBER = "6285555555555";
+const WA_NUMBER = SITE_CONFIG.whatsapp;
 const WA_PRESET = encodeURIComponent("Halo si4care, saya ingin bertanya tentang produk.");
 
 function WaIcon({ className = "h-6 w-6" }: { className?: string }) {
@@ -81,21 +82,21 @@ export default function ContactPage() {
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <div>
                   <p className="font-medium text-foreground">Alamat</p>
-                  <p className="text-muted-foreground leading-relaxed">Jl. Kesehatan No. 123, Menteng, Jakarta Pusat 10310</p>
+                  <p className="text-muted-foreground leading-relaxed">{SITE_CONFIG.address}</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <Mail className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <div>
                   <p className="font-medium text-foreground">Email</p>
-                  <a href="mailto:hello@si4care.id" className="text-muted-foreground hover:text-primary">hello@si4care.id</a>
+                  <a href={`mailto:${SITE_CONFIG.email.general}`} className="text-muted-foreground hover:text-primary">{SITE_CONFIG.email.general}</a>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <div>
                   <p className="font-medium text-foreground">Jam Operasional</p>
-                  <p className="text-muted-foreground leading-relaxed">Sen–Jum 08.00–17.00 · Sab 09.00–13.00 WIB</p>
+                  <p className="text-muted-foreground leading-relaxed">{SITE_CONFIG.hours}</p>
                 </div>
               </div>
             </div>
