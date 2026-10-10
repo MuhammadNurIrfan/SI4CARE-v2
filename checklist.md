@@ -12,7 +12,7 @@
 |---|---|
 | Produk | si4care — platform toko alat kesehatan (e-commerce + back-office/POS) |
 | Stack aktual | **Next.js 16 (App Router, src/) + React 19 + TypeScript strict + Tailwind v4 + shadcn/ui (base-ui) + framer-motion + recharts** |
-| Status | Backend aktif. **Database dimigrasikan MySQL → PostgreSQL (Supabase) pada 2026-10-08** — lihat §7d. |
+| Status | **Siap go-live dari sisi kode** (uji lengkap lulus di build production, lihat bagian Status). Tinggal tugas Owner O1–O10. Database PostgreSQL (Supabase) sejak 2026-10-08 — §7d. |
 | Bahasa UI | Indonesia |
 | Dokumen sumber | `prd.md` (requirement), `SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`, `docs/migration-plan-backend.pdf` (rencana migrasi), `docs/adr/0001-backend-stack.md` |
 | Perintah | `npm run dev` · `npm run build` · `npm run lint` · `npx tsc --noEmit` · `npm test` · `npm run test:e2e` · `test:reports` · `test:webhook` · `test:settlement` · `test:dashboard` · `test:security` · `db:seed` · `db:seed:demo` · `db:set-password` |
@@ -58,7 +58,7 @@ Detail langkah ada di **`docs/deploy-vercel.md`**. Urut dari atas.
 | **O1** | Cek repo GitHub **publik atau privat**; jadikan privat bila boleh | Password lama ada di riwayat git yang ter-push |
 | **O2** | **Ganti password** akun seed: `NEW_PASSWORD='…' npm run db:set-password -- admin@si4care.com` (ulangi tiap email, lalu perbarui `SEED_*` di `.env.local`) | Wajib sebelum situs publik. Skrip sudah diuji end-to-end |
 | **O3** | Buat **database Upstash Redis baru**, isi `UPSTASH_REDIS_REST_URL` + `_TOKEN` | Yang lama sudah dihapus Upstash (NXDOMAIN). Tanpa ini situs tetap jalan, tapi tanpa cache ongkir & rate-limit lintas-instance |
-| **O4** | Putuskan: **Supabase produksi terpisah** dari lokal? | Kalau tidak, transaksi uji dan akun demo lokal langsung muncul di situs live |
+| **O4** | Putuskan: **Supabase produksi terpisah** dari lokal? | Kalau tidak, transaksi uji dan akun contoh lokal langsung muncul di situs live |
 | **O5** | Isi **`KOMERCE_STORE_ORIGIN_ID`** (ID wilayah toko; cara mencari ada di `.env.example`) | Tanpa ini asal ongkir = kelurahan pertama hasil pencarian "JAKARTA SELATAN" — kurang presisi |
 | **O6** | **Ganti data placeholder** di `src/lib/site-config.ts`: nomor WhatsApp (`6285555555555` tidak aktif), telepon, alamat, email, jam | Satu file untuk footer, kontak, privasi, S&K, FAQ, struk POS |
 | **O7** | **Konten & klaim**: ganti 6 testimoni contoh (`/admin/content`), tulis artikel asli menggantikan 3 artikel contoh, pastikan klaim "Terdaftar BPOM · Izin Alkes Resmi Kemenkes" (hero, metadata, FAQ) benar, siapkan foto kategori/produk asli | Klaim regulasi harus bisa dibuktikan; testimoni contoh memuat nama orang rekaan |
@@ -76,7 +76,7 @@ Detail langkah ada di **`docs/deploy-vercel.md`**. Urut dari atas.
 | # | Tugas | Catatan |
 |---|---|---|
 | **O11** | Cloudflare **R2** (bucket + 5 env var) bila ingin upload foto di produksi | Tanpa R2, upload ditolak 503 (disk Vercel read-only) |
-| **O12** | Hapus akun demo `budi@/siti@/hendra@example.com` dan data uji di DB produksi; `npm run test:reports:clean` sebelum demo | |
+| **O12** | Hapus akun pelanggan contoh `budi@/siti@/hendra@example.com` dan data uji di DB produksi; `npm run test:reports:clean` sebelum go-live | Jangan jalankan `db:seed:demo` di produksi |
 | **O13** | Secret GitHub `DATABASE_URL`, lalu aktifkan blok `schedule` di `.github/workflows/db-backup.yml` | Backup harian |
 | **O14** | *(opsional)* Google OAuth; plugin & MCP Vercel (`npx plugins add vercel/vercel-plugin --target claude-code`) | Plugin **wajib** `--target claude-code`: auto-detect salah memilih Cursor |
 
@@ -123,8 +123,8 @@ src/
 └─ lib/         utils.ts · animationVariants.ts
 ```
 
-Kunci localStorage prototipe: `si4care_categories`, `si4care_content_v1`.
-Voucher demo: `SEHAT10`, `ALKES5`.
+Kunci localStorage lama `si4care_categories` dan `si4care_content_v1` sudah tidak dibaca aplikasi (data kini dari database).
+Voucher awal (`db:seed`): `SEHAT10`, `ALKES5`, `DISKON20RB`.
 
 Catatan teknis: QR pakai `uqr` (zero-dependency); barcode Code128 di-encode manual
 tanpa dependensi di `src/components/barcode.tsx`; format generate = EAN-13.
@@ -150,7 +150,7 @@ Temuan audit 2026-06-11. Prioritas karena menyangkut disk/memori & kebersihan re
 - [x] **Hapus folder `build-verify` s/d `build-verify6` (±780 MB sampah artefak build)** — selesai 2026-06-11
 - [x] **Hapus `tmp/`** — selesai 2026-06-11
 - [x] **Bersihkan `tsconfig.json`** — entri `build-verify*/types/**` dihapus dari `include`
-- [x] **Tulis ulang `README.md`** — deskripsi, status prototipe, cara run, struktur, link dokumen
+- [x] **Tulis ulang `README.md`** — deskripsi, status proyek, cara run, struktur, link dokumen
 - [x] **Ganti `"name": "si4care_temp"`** di package.json → `si4care`
 - [x] **Pindahkan `*.docx` ke `docs/`** (`SI4CARE-SRS.docx`, `RAB Si4Care v2.docx`) — selesai 2026-09-24
 - [x] **`.DS_Store` cleanup** — dihapus dari disk; tidak ada yang ter-commit di git
@@ -160,14 +160,14 @@ Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan
 
 ---
 
-## 5. SEBELUM PRESENTASI (prioritas tinggi)
+## 5. SEBELUM GO-LIVE (arsip — status terkini di bagian atas)
 
 - [x] Uji di perangkat fisik (mobile viewport 375x812): Landing hero, POS, checkout, orders — selesai 2026-09-24
 - [x] `npm run build` di mesin lokal — selesai 2026-09-24, TypeScript bersih, build artifact ✓
-- [ ] Siapkan 2–3 foto kategori asli untuk demo upload foto  → tugas owner **O7**
-- [x] Skenario demo tertulis: alur belanja → checkout pakai voucher `SEHAT10` → admin lihat pesanan → POS → stock opname — selesai: `docs/skenario-demo.md`
+- [ ] Siapkan 2–3 foto kategori asli untuk uji upload foto  → tugas owner **O7**
+- [x] Panduan uji alur utama tertulis: belanja → checkout voucher `SEHAT10` → pesanan admin → POS → stock opname — selesai: `docs/uji-alur-utama.md`
 
-## 6. NILAI TAMBAH DEMO (menengah, opsional)
+## 6. NILAI TAMBAH (menengah, opsional)
 
 - [x] Halaman detail artikel `/blog/[slug]` (kartu blog belum bisa diklik ke isi) — selesai (`blog/[slug]` + ISR; landing menaut ke artikel nyata)
 - [ ] Toast/notifikasi global (sebagian aksi tanpa umpan balik visual) — pakai `sonner`  → **K8**
@@ -180,7 +180,7 @@ Catatan lint (pra-eksisting, bukan dari sentralisasi): `npm run lint` melaporkan
 
 ## 7. MENUJU PRODUKSI (migrasi backend — DIMULAI 2026-06-17)
 
-Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipetakan ke file prototipe yang ada). Urutan di bawah ini ringkasannya — vertical slice per domain, bukan layer-by-layer.
+Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipetakan ke file frontend yang ada). Urutan di bawah ini ringkasannya — vertical slice per domain, bukan layer-by-layer.
 
 ### 7a. Fondasi (Fase 0)
 - [x] **ADR-0001: stack backend dipilih & dicatat** — MySQL + Drizzle ORM + Better Auth + Upstash Redis + Midtrans + RajaOngkir, satu stack (tanpa API server terpisah). Alasan: tim 2 orang, familiar MySQL, konsisten dengan `prd.md` §5. Detail di `docs/adr/0001-backend-stack.md`.
@@ -279,7 +279,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
 - [x] **Hardening (paralel)** — selesai 2026-06-22:
   - **Audit Log**: tabel `audit_logs` (userId, action, entityType, entityId, detail, createdAt) + `src/lib/audit.ts` helper. Log dipasang di: ubah status pesanan admin (`ORDER_STATUS_CHANGED`), validasi settlement marketplace (`SETTLEMENT_VALIDATED`), tutup sesi stock opname (`STOCK_OPNAME_CLOSED`), jual di bawah HPP (`PRICE_BELOW_HPP`).
   - **Anti-rugi**: `savePosTransaction` dan `createOrder` — cek `unitPrice < avgHpp` setelah alokasi batch; tolak dengan error + log audit `PRICE_BELOW_HPP`.
-  - **AuthZ / anti-IDOR**: `marketplace-settlement.ts` ditambah `requireAdmin()` (sebelumnya tidak ada auth sama sekali). `vouchers.ts`: `requireAdmin()` di `getVouchers`, `upsertVoucher`, `deleteVoucher`, `toggleVoucher`. `returns.ts`: `requireAdmin()` di `getAdminReturns` dan `updateReturnStatus` (sebelumnya cuma cek session, bukan role). `articles.ts`: `requireAdmin()` di `upsertArticle` dan `deleteArticle`. `orders.ts`: `adminUpdateOrderStatus()` server action baru (dengan admin check + audit log) menggantikan state-only prototype.
+  - **AuthZ / anti-IDOR**: `marketplace-settlement.ts` ditambah `requireAdmin()` (sebelumnya tidak ada auth sama sekali). `vouchers.ts`: `requireAdmin()` di `getVouchers`, `upsertVoucher`, `deleteVoucher`, `toggleVoucher`. `returns.ts`: `requireAdmin()` di `getAdminReturns` dan `updateReturnStatus` (sebelumnya cuma cek session, bukan role). `articles.ts`: `requireAdmin()` di `upsertArticle` dan `deleteArticle`. `orders.ts`: `adminUpdateOrderStatus()` server action baru (dengan admin check + audit log) menggantikan versi awal yang hanya mengubah state di client.
   - **Validasi Zod**: `submitReturn` (orderId, reason enum, detail min 5 char). `upsertArticle` (title, category, body, status, coverImage URL). `validateSettlement` (txId, settledAmount ≥0, newUiStatus enum). `submitReturn` juga memvalidasi IDOR (orderId harus milik user yang login, status `delivered`).
   - **Shared helpers**: `src/lib/server-auth.ts` — `requireSession()` + `requireAdmin()` reusable. `src/lib/audit.ts` — `logAudit()` never throws (audit failure tidak boleh block transaksi).
   - **QRIS compliance**: Dropdown POS tidak lagi tampilkan "0.7% MDR" di nama metode (tidak boleh menyiratkan surcharge ke pelanggan). MDR row di summary berubah jadi "MDR X% (ditanggung toko)". Note di QR dialog: "Pelanggan bayar {total} · MDR 0.7% ditanggung toko". `SERVICE_FEE` di orders.ts sudah flat Rp4.500 untuk semua metode (tidak berubah).
@@ -295,7 +295,7 @@ Rencana lengkap & rinci ada di `docs/migration-plan-backend.pdf` (per-fase, dipe
     - `tests/e2e/pos.spec.ts` — auth guard, katalog, klik → keranjang, scan barcode, tab marketplace.
     - `tests/e2e/returns.spec.ts` — riwayat pesanan, form retur customer, admin orders+returns.
   - **Prasyarat e2e** (diperbarui 2026-10-09): `npm run dev` + koneksi ke Supabase (XAMPP sudah tidak
-    dipakai sejak §7d) + **`npm run db:seed` DAN `npm run db:seed:demo`**. Seeder demo wajib karena
+    dipakai sejak §7d) + **`npm run db:seed` DAN `npm run db:seed:demo`**. Seeder data uji wajib karena
     menyediakan akun customer beserta alamat kirim & riwayat pesanan yang dipakai spec checkout/retur.
     Akun yang dipakai:
     - Customer: `budi@example.com` / *(dari `SEED_CUSTOMER_PASSWORD`)* (dari `db:seed:demo`; juga ada `siti@`/`hendra@example.com`)
@@ -403,7 +403,7 @@ Dibuktikan langsung ke DB:
   `allocateStock` membuang batch kadaluarsa (seed sengaja punya 1 batch expired untuk uji alarm),
   dan tanpa `ORDER BY` urutan Postgres bebas → script lolos/gagal berganti-ganti tiap run.
   Sekarang menyaring kadaluarsa + `orderBy` deterministik. Ditambah mode `--clean`
-  (`npm run test:reports:clean`) untuk menghapus transaksi uji sebelum demo.
+  (`npm run test:reports:clean`) untuk menghapus transaksi uji sebelum go-live.
 
 **Sudah aman (tidak perlu diubah)** — sudah dibungkus konversi di sisi JS:
 `pos.ts` (`Number(r.stock)`, `parseFloat(r.avgHpp)`), `stock-opname.ts` (`Number(v.systemStock)`,
@@ -524,8 +524,8 @@ setengah jadi:**
   membaca lewat `useContent()` → `ContentContext` → **`localStorage` saja**, tidak pernah dari DB.
 
 Akibatnya **edit konten oleh admin tidak pernah terlihat pengunjung lain** — hanya tersimpan di DB
-tanpa pembaca, sementara publik selalu melihat `DEFAULT_CONTENT`. Jadi jangan demokan alur ini
-(sudah dicatat di `docs/skenario-demo.md`).
+tanpa pembaca, sementara publik selalu melihat `DEFAULT_CONTENT`. Jadi jangan mengandalkan alur ini
+(sudah diperbaiki 2026-10-11, lihat §7h #2).
 
 - [x] **Sambungkan jalur baca CMS ke DB.** Rencana: `(landing)/page.tsx` jadi async server component
   **→ SELESAI 2026-10-11** — lihat §7h #2.
@@ -560,7 +560,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
    edit DB tidak langsung terlihat (di-cache), lalu muncul setelah jendela 60 dtk tanpa deploy ulang.
    `shop/[id]` memakai `generateStaticParams`, dan `shop/loading.tsx` **dihapus**: batas Suspense-nya membuat Next mengirim
    cangkang HTTP 200 sebelum `notFound()` sempat jalan, sehingga ID produk yang tak ada menghasilkan *soft 404*.
-4. **Halaman detail produk mengabaikan ID di URL** dan selalu menampilkan satu produk demo (`DEMO_PRODUCT_DETAIL`), dengan
+4. **Halaman detail produk mengabaikan ID di URL** dan selalu menampilkan satu produk contoh (`DEMO_PRODUCT_DETAIL`), dengan
    tombol keranjang yang menambahkan item ber-ID palsu. Kini server component + `lib/shop-queries.ts` (varian, stok, atribut,
    metadata, 404). `mock-data.ts` dihapus.
 5. **Angka karangan di UI dibuang** (tidak ada fitur ulasan/pelanggan yang mendukungnya): rating bawaan `4.8 · 0 terjual` di
@@ -569,7 +569,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
    DB atau fakta sistem. **Dashboard `/admin` — 477 baris angka karangan beserta `periodFactor` palsu — kini dari DB**
    (`lib/dashboard-query.ts`; omzet bruto = ledger + MDR + biaya agar MDR tak terpotong dua kali; 45 cek vs SQL independen).
 6. **Ledger hanya diisi alur POS.** Pesanan web (Midtrans) dan settlement marketplace tak pernah menulis `ledger_entries`,
-   sehingga `/admin/reports` di operasi nyata hanya memuat penjualan POS (data demo menutupinya karena `seed-demo` mengisi
+   sehingga `/admin/reports` di operasi nyata hanya memuat penjualan POS (data uji menutupinya karena `seed-demo` mengisi
    ledger manual). Kini `lib/ledger.ts` (idempoten) + `lib/ledger-calc.ts` (murni, diuji): web = `subtotal − diskon`
    (ongkir titipan kurir & service fee tidak dihitung; harga sudah termasuk PPN, sama seperti POS), marketplace = `netAmount`
    saat settlement selesai (basis kas) dan **dihapus lagi bila status dikembalikan ke pending**.
@@ -641,7 +641,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
   Setelah kredensial Midtrans/Komerce diisi (Midtrans hidup; Upstash lama sudah dihapus; API Komerce berubah total), build
   production dijalankan pertama kali dan membuka serangkaian masalah yang disembunyikan `npm run dev`. Yang terpenting:
   halaman publik yang membaca DB (`/`, `/shop`, `/blog`) **terbakar statis saat build** (→ ISR `revalidate=60` + `revalidatePath`);
-  `/shop/[id]` mengabaikan ID dan selalu menampilkan produk demo; dashboard admin 477 baris angka karangan; ledger tak pernah
+  `/shop/[id]` mengabaikan ID dan selalu menampilkan produk contoh; dashboard admin 477 baris angka karangan; ledger tak pernah
   diisi pesanan web & marketplace; webhook Midtrans tidak atomik (stok bisa terpotong dua kali); **pooler transaksi Supabase
   menggantung** bila satu koneksi menerima banyak query berbeda sekaligus (dibuktikan dengan klien `postgres` mentah; diperbaiki
   `limitConcurrency`); `.env` R2 memakai nama berbeda dari kode; rating/ulasan/pelanggan karangan di UI; kontak placeholder
@@ -693,10 +693,9 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
   **`src/lib/reports-query.ts`** dan `actions/reports.ts` jadi wrapper ber-guard. Ditemukan juga
   **celah fungsional**: Fase 4.1 CMS hanya setengah jadi — editor menulis ke DB tapi halaman depan
   masih membaca `localStorage`, jadi **edit konten tidak pernah terlihat pengunjung**; sengaja belum
-  diperbaiki karena menyentuh halaman depan (butuh persetujuan owner), dan sudah ditandai
-  "jangan didemokan". Perbaikan kode aplikasi: `aria-label` untuk tombol Scan POS yang di mobile tidak
-  punya nama aksesibel. Dibuat `docs/skenario-demo.md` (6 babak + poin jualan + daftar yang jangan
-  didemokan + tabel troubleshooting) dan `tests/e2e/admin-flow.spec.ts`. Dijalankan
+  diperbaiki karena menyentuh halaman depan (butuh persetujuan owner), dan kemudian
+  diperbaiki (§7h #2). Perbaikan kode aplikasi: `aria-label` untuk tombol Scan POS yang di mobile tidak
+  punya nama aksesibel. Dibuat panduan uji alur utama (kini `docs/uji-alur-utama.md`) dan `tests/e2e/admin-flow.spec.ts`. Dijalankan
   `npm run db:seed:demo` → 3 customer + alamat + 6 web order (semua status) + 5 POS + 3 marketplace.
   DoD: `tsc` bersih · `eslint` 0 error pada file yang disentuh · unit 51/51 · E2E 52/52 ·
   `test:reports` 9/9 · transaksi uji dibersihkan.
@@ -718,7 +717,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
   varian hanya dengan `remaining > 5` tanpa menyaring kadaluarsa (seed sengaja punya 1 batch expired
   untuk uji alarm) dan tanpa `ORDER BY`, jadi hasilnya berganti-ganti tiap run — itu sebabnya run
   kedua gagal di varian berbeda dari run pertama. Ditambah `npm run test:reports:clean` untuk
-  menghapus transaksi uji sebelum demo (diverifikasi: 0 transaksi sisa, 9 batch kembali `quantity =
+  menghapus transaksi uji sebelum go-live (diverifikasi: 0 transaksi sisa, 9 batch kembali `quantity =
   remaining`). Detail lengkap + aturan untuk query agregat baru dicatat di **§7e**.
   `npx tsc --noEmit` bersih; `eslint` bersih pada semua file yang disentuh.
 
@@ -726,7 +725,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
 
 - **2026-10-08 — Migrasi database MySQL → PostgreSQL (Supabase) — SELESAI**: Owner minta opsi DB gratis; dipilih Supabase free tier karena Drizzle mendukung PostgreSQL penuh (Firestore ditolak: butuh denormalisasi, tanpa JOIN untuk laporan, batas 25 write/transaksi berisiko untuk POS). Dikonversi: `schema.ts` + `auth-schema.ts` ke `pgTable`/`pgEnum` (11 enum jadi tipe terpisah), auth provider ke `pg`, driver ke `postgres-js`, `drizzle.config.ts` ke dialect postgresql. Diperbaiki sintaks MySQL yang lolos typecheck: `onDuplicateKeyUpdate`→`onConflictDoUpdate` (vouchers), `DATE_FORMAT`→`TO_CHAR` + 12× `CAST AS CHAR`→`AS TEXT` (reports — diuji langsung ke DB karena raw SQL tidak dicek `tsc`). Migration MySQL 0000–0004 dihapus (snapshot tak kompatibel), digenerate ulang jadi satu migration PostgreSQL berisi 26 tabel + 11 enum, dieksekusi via Supabase SQL Editor. Kolom `variants.stockMode` sempat jadi camelCase karena enum tanpa nama kolom eksplisit — diperbaiki ke `stock_mode`. Backup: `scripts/db-backup.sh` baru (pg_dump, auto-pilih versi ≥ server) + workflow GitHub dikonversi ke pg_dump (**perlu secret `DATABASE_URL`**). Seed berhasil: 2 akun admin, 4 kategori, 8 produk, 9 varian/batch, 3 voucher, konten landing. Diverifikasi: `/`, `/shop`, `/login` HTTP 200, produk seed tampil di `/shop`, login admin mengembalikan token + role `admin`. `npx tsc --noEmit` bersih; lint tidak bertambah dari file yang disentuh (34 error `react-hooks` pra-eksisting, terhitung dobel karena worktree `.kilo` ikut ter-scan). **Hambatan terbesar: ISP memblokir port PostgreSQL** — TCP handshake lolos tapi koneksi diputus ~1 RTT tanpa pesan error, sangat mirip password salah; terbukti setelah tes dari jaringan lain berhasil. `mysql2` sengaja dipertahankan karena worktree `.kilo/grizzly-slip` masih memakainya.
 
-- **2026-09-24 — Housekeeping + Presentasi Prep — SELESAI**: Pindahkan `SI4CARE-SRS.docx` + `RAB Si4Care v2.docx` ke `docs/` folder. Fix TypeScript error di `src/lib/db/index.ts` SSL config (spread operator conditional daripada passing `false` langsung). Run `npm run build` lokal — TypeScript ✓ bersih, build artifact berhasil di `.next/`. Dev server verified running; mobile viewport test pada landing hero — responsive sempurna 375x812. Update checklist: mark housekeeping item done, Fase 4.1 CMS done (dari sesi sebelumnya), test mobile/build done. `npx tsc --noEmit` ✓ bersih. Siap commit & push.
+- **2026-09-24 — Housekeeping + Persiapan Rilis — SELESAI**: Pindahkan `SI4CARE-SRS.docx` + `RAB Si4Care v2.docx` ke `docs/` folder. Fix TypeScript error di `src/lib/db/index.ts` SSL config (spread operator conditional daripada passing `false` langsung). Run `npm run build` lokal — TypeScript ✓ bersih, build artifact berhasil di `.next/`. Dev server verified running; mobile viewport test pada landing hero — responsive sempurna 375x812. Update checklist: mark housekeeping item done, Fase 4.1 CMS done (dari sesi sebelumnya), test mobile/build done. `npx tsc --noEmit` ✓ bersih. Siap commit & push.
 - **2026-09-20 — Fase 6: Photo Uploads (Per-Product) review complete — SUDAH SELESAI**: Infrastruktur 100% complete! Schema imageUrl di products table (migration 0004). `/api/upload?folder=products` endpoint auth-guarded, lokal fallback `/public/uploads/products/`. `ImageUpload` component dengan drag-drop, preview, delete. `ProductDialog` integrated. `getShopProducts()` returns imageUrl. `ProductCard` display imageUrl + fallback kategori foto. Siap untuk R2 swap sebelum deploy (set R2_ENDPOINT + credentials). Tinggal admin upload foto real produk.
 - **2026-09-20 — Fase 4.1 + Fase 5 selesai (CMS Konten + Order Management Web)**:
   - **Fase 4.1 — CMS Konten → DB**: Tabel `content_sections` (key VARCHAR, data JSON) + server actions (getContentSections, updateContentSection, resetContent). `admin/content/page.tsx` jadi async server component; `landing-editor-client.tsx` client component (Hero/CTA/Visibility/Testimonial/FAQ CRUD, useTransition). Seed data dengan default landing content. Migration 0004 ready. `.env.local` created. `npx tsc --noEmit` ✅ bersih.

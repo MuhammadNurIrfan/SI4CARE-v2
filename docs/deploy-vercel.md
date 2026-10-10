@@ -8,10 +8,10 @@ dan pengaturan di dashboard pihak ketiga.
 
 | # | Cek | Kenapa |
 |---|---|---|
-| 1 | **Ganti password akun seed** (`admin@`, `superadmin@`, dan akun demo) lalu perbarui `SEED_*` di `.env.local` | Password lama ada di riwayat git yang sudah ter-push (`checklist.md` A3a). Setelah deploy, akun itu bisa login di situs publik. Perintah: `NEW_PASSWORD='sandi-kuat-min-12-karakter' npm run db:set-password -- admin@si4care.com` (ulangi untuk tiap email; sesi login lama otomatis dicabut). Untuk database produksi, jalankan dengan `DATABASE_URL` produksi |
+| 1 | **Ganti password akun seed** (`admin@`, `superadmin@`, dan akun pelanggan contoh) lalu perbarui `SEED_*` di `.env.local` | Password lama ada di riwayat git yang sudah ter-push (`checklist.md` A3a). Setelah deploy, akun itu bisa login di situs publik. Perintah: `NEW_PASSWORD='sandi-kuat-min-12-karakter' npm run db:set-password -- admin@si4care.com` (ulangi untuk tiap email; sesi login lama otomatis dicabut). Untuk database produksi, jalankan dengan `DATABASE_URL` produksi |
 | 2 | Pastikan repo GitHub **privat** — atau sudah yakin riwayatnya aman | Sama seperti di atas |
 | 3 | Buat **database Upstash Redis baru** | Yang lama sudah dihapus (`selected-buzzard-…upstash.io` tidak ada lagi). Tanpa Redis situs tetap jalan, tapi tanpa cache ongkir dan rate-limit lintas-instance |
-| 4 | Putuskan: **database produksi terpisah dari lokal?** | Vercel memakai database yang sama dengan `.env.local` kecuali kamu membuat proyek Supabase kedua. Transaksi uji dan akun demo di lokal akan langsung terlihat di situs live |
+| 4 | Putuskan: **database produksi terpisah dari lokal?** | Vercel memakai database yang sama dengan `.env.local` kecuali kamu membuat proyek Supabase kedua. Transaksi uji dan akun contoh di lokal akan langsung terlihat di situs live |
 
 ## 1. Hubungkan GitHub ke Vercel
 
@@ -40,7 +40,7 @@ Nilainya ada di `.env.local` kamu; daftar lengkap dengan penjelasan ada di `.env
 | `BETTER_AUTH_URL` | ✅ | **Domain Vercel-mu**, mis. `https://si4care.vercel.app` — bukan `localhost` (server menolak start kalau begitu) |
 | `NEXT_PUBLIC_SITE_URL` | ✅ | Sama dengan `BETTER_AUTH_URL`. Dibaca saat **build**: kalau diubah, deploy ulang |
 | `MIDTRANS_SERVER_KEY` / `MIDTRANS_CLIENT_KEY` | ✅ | Pasangan **Sandbox** (`SB-Mid-…`) dengan `MIDTRANS_IS_PRODUCTION=false` — atau pasangan Production dengan `true`. Tidak boleh dicampur (server menolak start) |
-| `MIDTRANS_IS_PRODUCTION` | ✅ | `false` untuk demo |
+| `MIDTRANS_IS_PRODUCTION` | ✅ | `false` = Sandbox (pembayaran uji); `true` = pembayaran nyata, wajib kunci Production (`Mid-…`, bukan `SB-Mid-…`) |
 | `MIDTRANS_MERCHANT_ID` | – | Hanya rujukan; kode tidak memakainya |
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | disarankan | Dari database Upstash yang baru. Isi keduanya atau tidak sama sekali |
 | `KOMERCE_API_KEY` | disarankan | Tanpanya ongkir memakai tarif cadangan |

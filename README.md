@@ -3,7 +3,8 @@
 Platform toko alat kesehatan: e-commerce pelanggan (katalog, keranjang, checkout, akun) + back-office admin (dashboard, POS, pesanan, marketplace, inventori, stock opname, retur, diskon, CMS konten, laporan).
 
 > **Status: backend aktif.** Data tersimpan di PostgreSQL (Supabase), autentikasi lewat Better Auth,
-> pembayaran lewat Midtrans Sandbox. Posisi pekerjaan terakhir & backlog: lihat [checklist.md](checklist.md).
+> pembayaran lewat Midtrans (mode Sandbox atau Production ditentukan `MIDTRANS_IS_PRODUCTION`). Posisi pekerjaan terakhir,
+> daftar tugas go-live, dan backlog: lihat [checklist.md](checklist.md). Cara deploy: [docs/deploy-vercel.md](docs/deploy-vercel.md).
 
 ## Stack
 
@@ -43,14 +44,14 @@ yang tidak valid; di development hanya mencetak peringatan.
 ### 3. Siapkan database
 
 Untuk database kosong, jalankan isi `drizzle/0000_late_natasha_romanoff.sql` di Supabase SQL Editor
-(26 tabel + 11 enum). Lalu isi data demo:
+(26 tabel + 11 enum). Lalu isi data awal dan data uji (untuk lingkungan non-produksi):
 
 ```bash
 npm run db:seed        # akun admin, 4 kategori, 8 produk, 9 varian+batch, 3 voucher, konten landing
 npm run db:seed:demo   # 3 customer + alamat, 6 web order (semua status), 5 POS, 3 marketplace
 ```
 
-Keduanya idempoten — aman dijalankan ulang. **`db:seed:demo` wajib** kalau mau menjalankan E2E
+Keduanya idempoten — aman dijalankan ulang. **`db:seed:demo` wajib** kalau mau menjalankan E2E (hanya di lingkungan non-produksi)
 (spec checkout & retur memakai akun customer beserta alamat dan riwayat pesanan dari seeder ini).
 
 ### 4. Jalankan
@@ -74,11 +75,11 @@ npm run dev        # http://localhost:3000
 | `npm run test:settlement` | Ledger saat settlement marketplace selesai / dibatalkan |
 | `npm run test:dashboard` | Angka dashboard `/admin` vs SQL independen |
 | `npm run test:security` | Serangan ke server action di build production (lihat header skripnya) |
-| `npm run test:reports:clean` | Hapus transaksi uji — **jalankan sebelum demo/presentasi** |
+| `npm run test:reports:clean` | Hapus transaksi uji — **jalankan sebelum membuka laporan ke pihak lain** |
 | `npm run db:generate` | Generate file migration dari `schema.ts` |
 | `npm run db:migrate` | Terapkan migration ke database |
 | `npm run db:seed` | Isi data dasar (akun admin, katalog, voucher, 3 artikel contoh) |
-| `npm run db:seed:demo` | Isi data transaksi historis + akun customer |
+| `npm run db:seed:demo` | Isi data uji: akun customer, alamat, transaksi historis (**jangan di produksi**) |
 | `NEW_PASSWORD='…' npm run db:set-password -- <email>` | Ganti password akun yang sudah ada + cabut sesinya |
 | `npm run db:studio` | Drizzle Studio (GUI database) |
 | `npm run db:backup` | Backup ke `.sql.gz` lewat `pg_dump` |
@@ -108,7 +109,7 @@ drizzle/              # file migration SQL
 scripts/              # db-backup.sh
 ```
 
-## Akun demo
+## Akun seed (non-produksi)
 
 Dari `npm run db:seed`:
 
@@ -127,7 +128,7 @@ Dari `npm run db:seed:demo` — punya alamat kirim & riwayat pesanan, dipakai ju
 
 Pelanggan juga bisa daftar sendiri lewat `/register` (role default `customer`).
 
-Voucher demo:
+Voucher awal (dari `db:seed`):
 
 | Kode | Potongan | Minimum belanja | Maks. diskon |
 |---|---|---|---|
@@ -171,6 +172,6 @@ IPv6. Jaringan tanpa IPv6 wajib lewat session pooler.
 - [prd.md](prd.md) — product requirements
 - [checklist.md](checklist.md) — status pengerjaan, log sesi, & handoff antar sesi/AI
 - [docs/deploy-vercel.md](docs/deploy-vercel.md) — langkah deploy ke Vercel: env var, webhook Midtrans, pemeriksaan pasca-deploy
-- [docs/skenario-demo.md](docs/skenario-demo.md) — panduan presentasi ke klien (persiapan, urutan babak, yang jangan didemokan)
+- [docs/uji-alur-utama.md](docs/uji-alur-utama.md) — daftar periksa alur utama setelah deploy / sebelum go-live
 - [AGENTS.md](AGENTS.md) — aturan untuk AI coding agent
 - [docs/adr/](docs/adr/) — architecture decision records

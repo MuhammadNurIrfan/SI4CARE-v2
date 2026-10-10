@@ -4,7 +4,7 @@
 > Pilihan **database** (MySQL/MariaDB) sudah tidak berlaku — sekarang PostgreSQL di Supabase.
 > Keputusan lain di ADR ini (satu stack Next.js, Drizzle, Better Auth, Upstash, Midtrans, RajaOngkir) **masih berlaku**.
 > Isi di bawah dipertahankan apa adanya sebagai catatan sejarah.
-**Konteks:** si4care dimulai sebagai prototipe frontend-only (lihat `checklist.md`). `prd.md` §5 sudah menetapkan arsitektur target sejak awal proyek. ADR ini mengonfirmasi keputusan tersebut secara resmi untuk konteks tim aktual, sebelum implementasi backend (Fase 0) dimulai.
+**Konteks:** si4care dimulai sebagai aplikasi frontend-only (lihat `checklist.md`). `prd.md` §5 sudah menetapkan arsitektur target sejak awal proyek. ADR ini mengonfirmasi keputusan tersebut secara resmi untuk konteks tim aktual, sebelum implementasi backend (Fase 0) dimulai.
 
 ## Keputusan
 
@@ -12,7 +12,7 @@ Satu stack di dalam satu aplikasi Next.js — tidak ada API server terpisah (buk
 
 | Lapisan | Pilihan |
 |---|---|
-| Framework | Next.js (App Router) — lanjutan dari prototipe, Server Actions + Route Handlers |
+| Framework | Next.js (App Router) — lanjutan dari versi frontend-only, Server Actions + Route Handlers |
 | Database | **MySQL-compatible** — lokal dev pakai MariaDB 10.4.28 via XAMPP (port 3307), production bisa MySQL 8 asli |
 | ORM | **Drizzle ORM** (`drizzle-orm` + `mysql2` driver) |
 | Auth | **Better Auth** — email/password + Google OAuth, session di database |
@@ -35,5 +35,5 @@ Satu stack di dalam satu aplikasi Next.js — tidak ada API server terpisah (buk
 ## Konsekuensi
 
 - Skema, alur webhook Midtrans, dan algoritma alokasi stok FIFO/FEFO di `prd.md` §6/§8 dipakai langsung sebagai acuan implementasi, bukan didesain ulang dari nol.
-- Rencana eksekusi lengkap (pemetaan dari kode prototipe yang ada ke skema target, per fase) ada di [`docs/migration-plan-backend.pdf`](../migration-plan-backend.pdf).
+- Rencana eksekusi lengkap (pemetaan dari kode frontend-only yang ada ke skema target, per fase) ada di [`docs/migration-plan-backend.pdf`](../migration-plan-backend.pdf).
 - Kalau ke depan kebutuhan berubah (mis. tim bertambah dengan spesialisasi backend berbeda, atau pindah ke PostgreSQL untuk kebutuhan tertentu), buat ADR baru — jangan ubah keputusan ini secara diam-diam.

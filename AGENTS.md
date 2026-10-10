@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # si4care — aturan proyek
 
 ## Status
-**Backend aktif.** Data tersimpan di PostgreSQL (Supabase), auth lewat Better Auth, pembayaran lewat Midtrans Sandbox.
+**Backend aktif.** Data tersimpan di PostgreSQL (Supabase), auth lewat Better Auth, pembayaran lewat Midtrans (Sandbox/Production sesuai `MIDTRANS_IS_PRODUCTION`).
 Lihat `checklist.md` untuk posisi pekerjaan terakhir — **selalu baca & update file itu tiap sesi**.
 
 ## Stack
@@ -20,8 +20,8 @@ Lihat `checklist.md` untuk posisi pekerjaan terakhir — **selalu baca & update 
 - typecheck: `npx tsc --noEmit`  ← wajib hijau sebelum selesai sesi
 - lint: `npm run lint`
 - test: `npm test` (Vitest, 115 unit test)
-- e2e: `npm run test:e2e` (Playwright, 76 test chromium+mobile, 1 worker) — **butuh `npm run dev` jalan** + `db:seed` **dan** `db:seed:demo`. Jalankan **lewat npm script** (memuat `.env.local`); `npx playwright test` langsung tidak membawa `SEED_*`
-- uji data (langsung ke DB, membersihkan dirinya sendiri): `test:reports` (+ `test:reports:clean` sebelum demo) · `test:settlement` · `test:dashboard` · `test:webhook` (butuh dev/prod server) · `test:security` (butuh build production berjalan; lihat header skripnya)
+- e2e: `npm run test:e2e` (Playwright, 76 test chromium+mobile, 1 worker) — **butuh `npm run dev` jalan** + `db:seed` **dan** `db:seed:demo` (data uji — hanya untuk non-produksi, jangan di database produksi). Jalankan **lewat npm script** (memuat `.env.local`); `npx playwright test` langsung tidak membawa `SEED_*`
+- uji data (langsung ke DB, membersihkan dirinya sendiri): `test:reports` (+ `test:reports:clean` sebelum membuka laporan) · `test:settlement` · `test:dashboard` · `test:webhook` (butuh dev/prod server) · `test:security` (butuh build production berjalan; lihat header skripnya)
 - ganti password akun: `NEW_PASSWORD='…' npm run db:set-password -- <email>`
 - build: `npm run build` (di sandbox bisa gagal hanya karena download Google Fonts — bukan error kode)
 - database: `npm run db:generate` → `npm run db:migrate` · `npm run db:seed` · `npm run db:seed:demo` · `npm run db:studio` · `npm run db:backup`

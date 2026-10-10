@@ -7,7 +7,7 @@
 
 ADR-0001 memilih MySQL dengan alasan familiaritas tim, dan untuk dev dipakai MariaDB 10.4.28 lewat XAMPP di mesin lokal. Menjelang deployment muncul dua kebutuhan baru:
 
-1. **Database harus bisa diakses dari luar mesin dev.** XAMPP lokal tidak bisa dipakai untuk demo ke klien maupun untuk build di CI.
+1. **Database harus bisa diakses dari luar mesin dev.** XAMPP lokal tidak bisa dipakai untuk pengujian bersama maupun untuk build di CI.
 2. **Biaya hosting harus serendah mungkin** — proyek ini belum menghasilkan, owner meminta opsi gratis.
 
 Kandidat yang ditimbang: PlanetScale (MySQL, tidak ada lagi free tier memadai), Railway (MySQL, free credit terbatas), Firebase Firestore (gratis tapi NoSQL), dan Supabase (PostgreSQL, free tier 500MB).
