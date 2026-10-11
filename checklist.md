@@ -38,12 +38,12 @@
 | Pemeriksaan | Hasil |
 |---|---|
 | `npx tsc --noEmit` | bersih |
-| `npm test` (Vitest) | **115/115** |
+| `npm test` (Vitest) | **133/133** |
 | `npm run test:e2e` (dev server, 1 worker) | **76/76**, 0 skip |
 | Build production (`npm run build`) | sukses; `/`, `/shop`, `/shop/[id]`, `/blog`, `/blog/[slug]` = ISR 1 menit |
 | `test:webhook` — server **production**, pooler **6543** | 16/16 (termasuk 3 webhook bersamaan → hanya 1 diproses) |
 | `test:settlement` / `test:reports` / `test:dashboard` — pooler 6543 | 16/16 · 9/9 · 45/45 |
-| `test:security` — serangan ke server action, build production | 14/14 ditolak, DB utuh |
+| `test:security` — serangan ke server action, build production | 26/26 ditolak, DB utuh |
 | Server production dengan env salah | menolak melayani request; pesan menunjuk variabelnya |
 | Lint seluruh proyek | 15 error **pra-eksisting** (dulu 34); tidak ada yang ditambahkan sesi ini — `landing-editor-client.tsx` yang ikut tersentuh (2 baris impor) punya 5 error sebelum maupun sesudah |
 
@@ -93,6 +93,7 @@ Detail langkah ada di **`docs/deploy-vercel.md`**. Urut dari atas.
 | **K7** | 15 error lint `react-hooks/*` pra-eksisting (navbar, carousel, CartContext, landing-editor, dll.) | Perbaiki incremental saat menyentuh file terkait |
 | **K8** | Nilai tambah: toast `sonner`, scanner kamera POS, inbound + stock opname atomik, kontras WCAG AA `text-muted-foreground`, cetak struk thermal ESC/POS + label barcode 33×15 mm | |
 | **K9** | Transaction pooler: `limit-concurrency.ts` memaksa satu query per koneksi karena Supavisor menggantung bila dipipeline. Cek apakah masih perlu setelah Supabase/`postgres-js` diperbarui | Lihat §7h #9 |
+| **K10** ✅ | Halaman **Kelola Akun** (`/admin/accounts`, hanya Super Admin): daftar semua akun + lihat/edit/hapus + ikon buat akun di kanan atas | Guard `requireSuperAdmin()` di tiap action; aturan di `lib/accounts-rules.ts`. Selesai 2026-10-11 |
 
 ### ✅ Sudah selesai sesi 2026-10-09 → 10-11 (ringkas; rincian di §7e–§7h)
 
@@ -637,6 +638,7 @@ status HTTP di-stream) dan hanya terlihat lewat `npm run build` + `next start` +
 
 ## Log Sesi
 
+- **2026-10-11 — Fitur Kelola Akun (Super Admin)**: halaman `/admin/accounts` (daftar + cari + filter peran; aksi lihat/edit/hapus; ikon `UserPlus` kanan atas untuk buat akun; tabel desktop + kartu mobile) dan menu "Kelola Akun" di sidebar yang hanya muncul untuk Super Admin. Server action `src/actions/accounts.ts` (list/detail/create/update/delete) semuanya diawali `requireSuperAdmin()` (baru, `lib/server-auth.ts`). Aturan murni + 18 tes di `lib/accounts-rules.ts`: tak bisa mengubah peran/menghapus akun sendiri, tak bisa menyisakan nol Super Admin (baris Super Admin dikunci `FOR UPDATE` dalam transaksi), ganti peran/password mencabut semua sesi pengguna itu. Aksi tercatat di `audit_logs`. Harness `test:security` diperluas (4 action baru, admin biasa ikut jadi penyerang, kontrol positif Super Admin): 26/26 ditolak, DB utuh. **Bug tertangkap lewat UI, bukan tsc**: subquery hitung pesanan memakai `${orders.userId} = ${user.id}` — Drizzle membuang prefix tabel di subquery sehingga SQL menjadi `"user_id" = "id"` (keduanya milik `orders`) dan hasilnya selalu 0; diperbaiki dengan nama tabel literal & diverifikasi ke DB. Catatan data: akun pelanggan lama (`seed-demo`) berperan `user`, bukan `customer`; `normalizeRole` memperlakukannya sebagai Pelanggan. tsc, lint file tersentuh, 133 tes unit, build production, dan uji UI (desktop + 390px) bersih.
 - **2026-10-10 → 10-11 — Production-readiness: 18 temuan, semuanya diperbaiki dan dibuktikan di build production**:
   Setelah kredensial Midtrans/Komerce diisi (Midtrans hidup; Upstash lama sudah dihapus; API Komerce berubah total), build
   production dijalankan pertama kali dan membuka serangkaian masalah yang disembunyikan `npm run dev`. Yang terpenting:

@@ -68,7 +68,7 @@ npm run dev        # http://localhost:3000
 | `npm run build` | Production build |
 | `npm run lint` | ESLint |
 | `npx tsc --noEmit` | Type check — **wajib bersih sebelum selesai sesi** |
-| `npm test` | Unit test (Vitest) — 115 test |
+| `npm test` | Unit test (Vitest) — 133 test |
 | `npm run test:e2e` | E2E (Playwright) — 76 test; butuh dev server jalan + kedua seeder |
 | `npm run test:reports` | Buat 3 transaksi POS nyata lalu verifikasi angka `/admin/reports` |
 | `npm run test:webhook` | Webhook Midtrans end-to-end: stok terpotong sekali, ledger terbentuk, kiriman ganda/bersamaan aman (butuh server berjalan) |

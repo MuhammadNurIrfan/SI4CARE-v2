@@ -8,6 +8,14 @@ export async function requireSession() {
   return session;
 }
 
+/** Throws if not logged in or not super_admin. */
+export async function requireSuperAdmin() {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session) throw new Error("Tidak ada sesi aktif");
+  if (session.user.role !== "super_admin") throw new Error("Akses ditolak");
+  return session;
+}
+
 /** Throws if not logged in or not admin/super_admin. */
 export async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });

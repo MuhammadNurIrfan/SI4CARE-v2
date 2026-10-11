@@ -50,13 +50,14 @@ async function attack(route: string, action: string, args: unknown[], cookie: st
   });
   const body = (await res.text()).trim();
   if (body === "" || body === "{}") return "tidak-sampai"; // action tidak ada di rute ini
-  if (/totalSales|totalHpp|"hero"/.test(body)) return "DATA";
+  if (/totalSales|totalHpp|"hero"|"orderCount"/.test(body)) return "DATA";
   if (body.includes('"digest"') || body.includes("Akses ditolak") || body.includes("Tidak ada sesi")) return "DITOLAK";
   if (body.includes('"ok":true')) return "DIJALANKAN";
   return "lain";
 }
 
-const ATTACKS: Array<[route: string, action: string, args: unknown[], risk: string]> = [
+// Elemen ke-5 true = hanya Super Admin yang boleh; admin biasa ikut jadi penyerang.
+const ATTACKS: Array<[route: string, action: string, args: unknown[], risk: string, superOnly?: boolean]> = [
   ["/admin/stock-opname", "closeSession", ["fake-session"], "KRITIS ubah stok"],
   ["/admin/stock-opname", "startSoSession", ["attacker"], "KRITIS buat sesi opname"],
   ["/admin/stock-opname", "saveOpnameProgress", [[{ id: "x", physicalStock: 0, notes: "" }]], "KRITIS ubah hitungan"],
@@ -64,6 +65,10 @@ const ATTACKS: Array<[route: string, action: string, args: unknown[], risk: stri
   ["/admin/reports", "getReportData", ["2026-01-01", "2026-12-31", "semua"], "TINGGI bocor omzet/HPP"],
   ["/admin/marketplace", "validateSettlement", ["x", 1, "selesai"], "TINGGI ubah ledger"],
   ["/admin/orders", "adminUpdateOrderStatus", ["x", "paid"], "TINGGI ubah pesanan"],
+  ["/admin/accounts", "listAccounts", [], "TINGGI bocor daftar akun", true],
+  ["/admin/accounts", "createAccount", [{ name: "Hacker", email: "hacker.uji@example.com", phone: "", role: "super_admin", password: "hacker-pass-123" }], "KRITIS buat Super Admin", true],
+  ["/admin/accounts", "updateAccount", [{ id: "x", name: "x", email: "x@example.com", phone: "", role: "super_admin", password: "hacker-pass-123" }], "KRITIS ambil alih akun", true],
+  ["/admin/accounts", "deleteAccount", ["x"], "KRITIS hapus akun", true],
 ];
 
 async function snapshot() {
@@ -72,7 +77,10 @@ async function snapshot() {
     (select md5(data::text) from content_sections where key = 'landing') as content,
     (select coalesce(sum(remaining), 0) from batches) as stock,
     (select count(*) from audit_logs) as audit,
-    (select count(*) from ledger_entries) as ledger`)) as unknown as Array<Record<string, unknown>>;
+    (select count(*) from ledger_entries) as ledger,
+    (select count(*) from "user") as users,
+    (select md5(string_agg(id || coalesce(role, '') || email, ',' order by id)) from "user") as user_state,
+    (select md5(string_agg(user_id || coalesce(password, ''), ',' order by id)) from account) as credentials`)) as unknown as Array<Record<string, unknown>>;
   return JSON.stringify(r[0]);
 }
 
@@ -80,34 +88,41 @@ async function main() {
   const need = (k: string) => process.env[k] ?? (() => { throw new Error(`${k} belum diisi`); })();
   const customer = await login("budi@example.com", need("SEED_CUSTOMER_PASSWORD"));
   const admin = await login("admin@si4care.com", need("SEED_ADMIN_PASSWORD"));
+  const superAdmin = await login("superadmin@si4care.com", need("SEED_SUPERADMIN_PASSWORD"));
   const actors: Array<[string, string]> = [
     ["anonim + cookie palsu", "better-auth.session_token=forged.value"],
     ["pelanggan asli", customer],
   ];
+  const adminActor: [string, string] = ["admin biasa", admin];
 
   const before = await snapshot();
   let bad = 0;
   console.log("🧪 Serangan ke server action (build production)\n");
-  for (const [route, action, args, risk] of ATTACKS) {
+  let total = 0;
+  for (const [route, action, args, risk, superOnly] of ATTACKS) {
+    const who = superOnly ? [...actors, adminActor] : actors;
     const cells: string[] = [];
-    for (const [, cookie] of actors) {
+    for (const [, cookie] of who) {
       const v = await attack(route, action, args, cookie);
+      total++;
       if (v !== "DITOLAK") bad++;
       cells.push(`${v === "DITOLAK" ? "✓" : "✗"} ${v}`);
     }
-    console.log(`   ${action.padEnd(24)} ${risk.padEnd(26)} ${actors.map(([n], i) => `${n}: ${cells[i]}`).join("   ")}`);
+    console.log(`   ${action.padEnd(24)} ${risk.padEnd(26)} ${who.map(([n], i) => `${n}: ${cells[i]}`).join("   ")}`);
   }
 
   const control = await attack("/admin/reports", "getReportData", ["2026-01-01", "2026-12-31", "semua"], admin);
-  const controlOk = control === "DATA";
-  console.log(`\n   kontrol positif (admin membaca laporan): ${control} ${controlOk ? "✓" : "✗ alat uji tidak bisa dipercaya"}`);
+  const control2 = await attack("/admin/accounts", "listAccounts", [], superAdmin);
+  const controlOk = control === "DATA" && control2 === "DATA";
+  console.log(`\n   kontrol positif (admin membaca laporan): ${control} ${control === "DATA" ? "✓" : "✗ alat uji tidak bisa dipercaya"}`);
+  console.log(`   kontrol positif (Super Admin membaca daftar akun): ${control2} ${control2 === "DATA" ? "✓" : "✗ alat uji tidak bisa dipercaya"}`);
 
   const after = await snapshot();
   const untouched = before === after;
   console.log(`   DB tak berubah: ${untouched ? "✓" : "✗ " + before + " → " + after}`);
 
   const failed = bad > 0 || !controlOk || !untouched;
-  console.log(failed ? `\n❌ GAGAL (${bad} serangan lolos)` : `\n🎉 Semua ${ATTACKS.length * actors.length} serangan ditolak, DB utuh`);
+  console.log(failed ? `\n❌ GAGAL (${bad} serangan lolos)` : `\n🎉 Semua ${total} serangan ditolak, DB utuh`);
   process.exit(failed ? 1 : 0);
 }
 main().catch((e) => { console.error("❌ Error:", e.message); process.exit(1); });

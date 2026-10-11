@@ -3,7 +3,7 @@
 import {
   ShoppingCart, LayoutDashboard, Package, RefreshCcw, Store, Settings,
   LogOut, Bell, BarChart2, PackagePlus, Ticket, FileText, HelpCircle, ChevronRight,
-  FolderOpen, ClipboardCheck, MessageSquare,
+  FolderOpen, ClipboardCheck, MessageSquare, Users,
 } from "lucide-react";
 import {
   Sidebar,
@@ -66,10 +66,17 @@ const navGroups: { label: string; items: NavItem[] }[] = [
   },
 ];
 
+const SUPER_ADMIN_ITEM: NavItem = { title: "Kelola Akun", url: "/admin/accounts", icon: Users };
+
+function groupsFor(role: string | null | undefined) {
+  if (role !== "super_admin") return navGroups;
+  return navGroups.map((g) => (g.label === "Sistem" ? { ...g, items: [SUPER_ADMIN_ITEM, ...g.items] } : g));
+}
+
 const ACTIVE = "bg-gradient-to-r from-primary to-[oklch(0.55_0.12_176)] !text-white shadow-lg shadow-primary/30 hover:!text-white";
 const IDLE = "text-sidebar-foreground/70 hover:bg-white/10 hover:text-white";
 
-type AdminUser = { name: string; email: string };
+type AdminUser = { name: string; email: string; role?: string | null };
 
 export function AppSidebar({ user }: { user: AdminUser }) {
   const pathname = usePathname();
@@ -100,7 +107,7 @@ export function AppSidebar({ user }: { user: AdminUser }) {
       </SidebarHeader>
 
       <SidebarContent className="px-1.5">
-        {navGroups.map((group) => (
+        {groupsFor(user.role).map((group) => (
           <SidebarGroup key={group.label} className="py-1">
             <SidebarGroupLabel className="px-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/35">
               {group.label}

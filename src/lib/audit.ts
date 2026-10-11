@@ -6,7 +6,10 @@ export type AuditAction =
   | "ORDER_STATUS_CHANGED"
   | "SETTLEMENT_VALIDATED"
   | "STOCK_OPNAME_CLOSED"
-  | "PRICE_BELOW_HPP";
+  | "PRICE_BELOW_HPP"
+  | "ACCOUNT_CREATED"
+  | "ACCOUNT_UPDATED"
+  | "ACCOUNT_DELETED";
 
 /**
  * Log a sensitive admin action. Never throws — audit failure must not block business ops.

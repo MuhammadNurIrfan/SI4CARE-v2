@@ -19,7 +19,7 @@ Lihat `checklist.md` untuk posisi pekerjaan terakhir — **selalu baca & update 
 - dev: `npm run dev`
 - typecheck: `npx tsc --noEmit`  ← wajib hijau sebelum selesai sesi
 - lint: `npm run lint`
-- test: `npm test` (Vitest, 115 unit test)
+- test: `npm test` (Vitest, 133 unit test)
 - e2e: `npm run test:e2e` (Playwright, 76 test chromium+mobile, 1 worker) — **butuh `npm run dev` jalan** + `db:seed` **dan** `db:seed:demo` (data uji — hanya untuk non-produksi, jangan di database produksi). Jalankan **lewat npm script** (memuat `.env.local`); `npx playwright test` langsung tidak membawa `SEED_*`
 - uji data (langsung ke DB, membersihkan dirinya sendiri): `test:reports` (+ `test:reports:clean` sebelum membuka laporan) · `test:settlement` · `test:dashboard` · `test:webhook` (butuh dev/prod server) · `test:security` (butuh build production berjalan; lihat header skripnya)
 - ganti password akun: `NEW_PASSWORD='…' npm run db:set-password -- <email>`
